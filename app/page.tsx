@@ -44,11 +44,11 @@ export default function RootPage() {
         <div className="flex items-center space-x-3">
           <img src="/logo.png" alt="Techveons Creations" className="w-12 h-12 object-contain" />
           <div>
-            <span className="font-extrabold text-lg tracking-tight text-white">
-              TECHVEONS CREATIONS
+            <span className="font-display text-2xl font-semibold tracking-[0.04em] text-white">
+              Techveons Creations
             </span>
-            <p className="text-[10px] text-blue-400 font-mono tracking-wider">
-              EMPLOYEE PORTAL
+            <p className="text-[10px] text-blue-400 font-sans tracking-[0.18em] uppercase mt-0.5">
+              Employee Portal
             </p>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function RootPage() {
           <span>Internal Employee Digital Identity & Training Platform</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
+        <h1 className="text-4xl sm:text-6xl font-display font-semibold text-white tracking-tight leading-tight">
           Techveons Employee Digital Identity & Skill Development
         </h1>
 

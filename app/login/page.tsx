@@ -64,10 +64,10 @@ export default function LoginPage() {
           <div className="mx-auto mb-4">
             <img src="/logo.png" alt="Techveons Creations" className="w-28 h-28 object-contain mx-auto" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            TECHVEONS CREATIONS
+          <h1 className="font-display text-3xl font-semibold text-white tracking-[0.04em]">
+            Techveons Creations
           </h1>
-          <p className="text-xs text-blue-400 font-mono tracking-wider mt-1 uppercase">
+          <p className="text-xs text-blue-400 font-sans tracking-[0.16em] mt-1 uppercase">
             Employee Digital Identity & Skill Portal
           </p>
         </div>

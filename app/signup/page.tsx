@@ -93,10 +93,10 @@ export default function SignupPage() {
           <div className="mx-auto mb-4">
             <img src="/logo.png" alt="Techveons Creations" className="w-20 h-20 object-contain mx-auto" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+          <h1 className="font-display text-3xl font-semibold text-white tracking-[0.04em]">
             Create Digital Identity
           </h1>
-          <p className="text-xs text-blue-400 font-mono tracking-wider mt-1 uppercase">
+          <p className="text-xs text-blue-400 font-sans tracking-[0.14em] mt-1 uppercase">
             Techveons Creations Internal Member Registration
           </p>
         </div>

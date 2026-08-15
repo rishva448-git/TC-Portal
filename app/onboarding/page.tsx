@@ -69,8 +69,8 @@ export default function OnboardingPage() {
           <div className="flex items-center space-x-3">
             <img src="/logo.png" alt="Techveons Creations" className="w-12 h-12 object-contain" />
             <div>
-              <h2 className="font-extrabold text-white text-base">TECHVEONS ONBOARDING</h2>
-              <p className="text-xs text-blue-400 font-mono">Member Digital Setup</p>
+              <h2 className="font-extrabold text-white text-base font-display tracking-[0.04em]">Techveons Onboarding</h2>
+              <p className="text-xs text-blue-400 font-sans tracking-wide">Member Digital Setup</p>
             </div>
           </div>
 

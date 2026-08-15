@@ -53,11 +53,11 @@ export default function DigitalIdCard({ member, compact = false }: DigitalIdCard
                 <img src="/logo.png" alt="Techveons Creations" className="w-10 h-10 object-contain" />
               </div>
               <div>
-                <h3 className="font-bold text-white tracking-wide text-sm flex items-center gap-1.5">
+                <h3 className="font-display text-base font-semibold text-white tracking-[0.03em] flex items-center gap-1.5">
                   <span>Techveons Creations</span>
                   <ShieldCheck className="w-4 h-4 text-blue-400" />
                 </h3>
-                <p className="text-[10px] text-gray-400 font-mono tracking-wider uppercase">Official Employee Digital ID</p>
+                <p className="text-[10px] text-gray-400 font-sans tracking-[0.16em] uppercase">Official Employee Digital ID</p>
               </div>
             </div>
             <div className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-mono font-bold">
