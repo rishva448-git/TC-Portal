@@ -11,6 +11,7 @@ import {
   BarChart3,
   Sliders,
   Settings,
+  Shield,
   FileText,
   LogOut,
   ArrowLeft,
@@ -38,11 +39,8 @@ export default function AdminSidebar() {
         {/* Header */}
         <div className="px-3 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-xl border border-amber-500/20">
           <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="Techveons Creations" className="w-7 h-7 object-contain" />
-            <div>
-              <span className="text-xs font-bold text-amber-300 tracking-wide uppercase block">ADMIN CONTROL</span>
-              <span className="text-[9px] text-gray-500 font-mono tracking-wider">TECHVEONS CREATIONS</span>
-            </div>
+            <Shield className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold text-amber-300 tracking-wide uppercase">ADMIN CONTROL</span>
           </div>
         </div>
 
