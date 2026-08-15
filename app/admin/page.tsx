@@ -85,18 +85,18 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8 pb-12">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-800 pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-8 h-8 text-amber-400" />
-            Admin Control Center
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-gray-800 pb-5 sm:pb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-3xl font-display font-semibold text-white tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-amber-400 flex-shrink-0" />
+            <span className="leading-tight">Admin Control Center</span>
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
             Techveons Employee Digital Identity & Skill Development Overview
           </p>
         </div>
 
-        <div className="text-xs font-mono px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
+        <div className="text-[10px] sm:text-xs px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold tracking-wide whitespace-nowrap">
           ADMIN SESSION ACTIVE
         </div>
       </div>

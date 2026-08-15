@@ -66,27 +66,26 @@ export default function Navbar({ user }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-gray-900/95 backdrop-blur-md border-b border-gray-800/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
         {/* Left: Brand */}
-        <div className="flex items-center min-w-0">
-          <Link href="/home" className="flex items-center gap-3 group min-w-0">
-            <div className="w-11 h-11 flex-shrink-0 flex items-center justify-center">
-              <img src="/logo.png" alt="Techveons Creations" className="w-full h-full object-contain" />
-            </div>
-            <div className="min-w-0">
-              <span className="font-display text-xl font-semibold tracking-[0.04em] text-white leading-none">
-                Techveons Creations
-              </span>
-              <p className="text-[10px] text-gray-400 font-sans tracking-[0.18em] uppercase hidden sm:block mt-1 truncate">
-                Employee Digital Identity & Skill Portal
-              </p>
-            </div>
-          </Link>
-        </div>
+        <Link href="/home" className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 md:flex-none md:max-w-[280px]">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <img src="/logo.png" alt="Techveons Creations" className="w-full h-full object-contain" />
+          </div>
+          <div className="min-w-0 overflow-hidden">
+            <span className="font-display text-base sm:text-xl font-semibold tracking-[0.02em] text-white leading-tight block truncate">
+              <span className="sm:hidden">Techveons</span>
+              <span className="hidden sm:inline">Techveons Creations</span>
+            </span>
+            <p className="text-[9px] sm:text-[10px] text-gray-400 font-sans tracking-[0.14em] uppercase hidden md:block mt-0.5 truncate">
+              Employee Digital Identity & Skill Portal
+            </p>
+          </div>
+        </Link>
 
-        {/* Center: Navigation */}
-        {user ? (
-          <nav className="hidden md:flex items-center justify-center gap-1">
+        {/* Center: Desktop Navigation */}
+        {user && (
+          <nav className="hidden md:flex items-center justify-center gap-1 flex-1 px-2">
             <Link href="/home" className={navLinkClass('/home')}>
               <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <span>Home</span>
@@ -104,12 +103,10 @@ export default function Navbar({ user }: NavbarProps) {
               <span>My Dashboard</span>
             </Link>
           </nav>
-        ) : (
-          <div />
         )}
 
         {/* Right: Actions */}
-        <div className="flex items-center justify-end gap-2 sm:gap-3">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-3 flex-shrink-0">
           {user ? (
             <>
               {user.role === 'ADMIN' && (
@@ -128,17 +125,17 @@ export default function Navbar({ user }: NavbarProps) {
                     setShowNotifications(!showNotifications);
                     setShowUserMenu(false);
                   }}
-                  className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 relative transition-all"
+                  className="p-2 sm:p-2.5 rounded-xl border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 relative transition-all"
                   aria-label="Notifications"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-gray-950 animate-pulse" />
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-blue-500 rounded-full ring-2 ring-gray-950 animate-pulse" />
                   )}
                 </button>
 
                 {showNotifications && (
-                  <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-gray-900 rounded-2xl border border-gray-800 shadow-lg p-4 z-50">
+                  <div className="absolute right-0 mt-3 w-[min(22rem,calc(100vw-1.5rem))] bg-gray-900 rounded-2xl border border-gray-800 shadow-lg p-4 z-50">
                     <div className="flex items-center justify-between pb-3 border-b border-gray-800 mb-3">
                       <h4 className="text-sm font-semibold text-white flex items-center gap-2 font-display tracking-wide">
                         Notifications
@@ -176,9 +173,9 @@ export default function Navbar({ user }: NavbarProps) {
                     setShowUserMenu(!showUserMenu);
                     setShowNotifications(false);
                   }}
-                  className="flex items-center gap-2 p-1.5 rounded-xl bg-gray-900/80 border border-gray-800 hover:border-blue-500/40 transition-all"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl border border-gray-800 hover:border-blue-500/40 transition-all"
                 >
-                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-blue-600 flex items-center justify-center font-semibold text-white text-sm">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-blue-600 flex items-center justify-center font-semibold text-white text-sm flex-shrink-0">
                     {user.profile?.profilePhoto ? (
                       <img
                         src={user.profile.profilePhoto}
@@ -197,11 +194,11 @@ export default function Navbar({ user }: NavbarProps) {
                       {user.profile?.memberId || user.role}
                     </p>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <ChevronDown className="w-4 h-4 text-gray-400 hidden xs:block sm:block" />
                 </button>
 
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-3 w-64 bg-gray-900 rounded-2xl border border-gray-800 shadow-lg p-3 z-50">
+                  <div className="absolute right-0 mt-3 w-[min(16rem,calc(100vw-1.5rem))] bg-gray-900 rounded-2xl border border-gray-800 shadow-lg p-3 z-50">
                     <div className="p-3 border-b border-gray-800 mb-2 text-sm">
                       <p className="text-sm font-semibold text-white font-display tracking-wide">{user.profile?.fullName}</p>
                       <p className="text-sm text-gray-400 truncate">{user.email}</p>
@@ -242,18 +239,18 @@ export default function Navbar({ user }: NavbarProps) {
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 href="/login"
-                className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
               >
                 Log In
               </Link>
               <Link
                 href="/signup"
-                className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
+                className="px-3 sm:px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/20 transition-all"
               >
-                Join Platform
+                Join
               </Link>
             </div>
           )}
