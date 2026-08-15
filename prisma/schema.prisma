@@ -1,0 +1,112 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  role         String         @default("MEMBER") // "ADMIN" or "MEMBER"
+  status       String         @default("PENDING") // "PENDING", "APPROVED", "SUSPENDED", "REJECTED"
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  profile      MemberProfile?
+  watchHistory WatchHistory[]
+  notifications Notification[]
+  auditLogs    AuditLog[]
+}
+
+model MemberProfile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberId     String   @unique // e.g. "TV-001", "TV-002"
+  fullName     String
+  phone        String?
+  email        String
+  profilePhoto String?
+  company      String   @default("Techveons Creations")
+  position     String   // e.g. "AI Automation Engineer", "Frontend Developer"
+  roleId       String?  // Reference to Role.id
+  bio          String?
+  skills       String   @default("[]") // JSON string array of skills
+  joiningDate  DateTime @default(now())
+  lastActiveTime DateTime @default(now())
+  status       String   @default("PENDING")
+}
+
+model Role {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  description       String
+  recommendedSkills String   @default("[]") // JSON string array
+  createdAt         DateTime @default(now())
+  videos            Video[]
+}
+
+model Video {
+  id             String         @id @default(uuid())
+  title          String
+  youtubeUrl     String
+  youtubeVideoId String
+  thumbnailUrl   String
+  description    String?
+  purpose        String         // Purpose / Reason for watching
+  roleId         String?        // Target role ID, or null / "ALL" for all members
+  role           Role?          @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  category       String         @default("Technical") // Technical, Marketing, Design, Business, Productivity, etc.
+  difficulty     String         @default("Intermediate") // Beginner, Intermediate, Advanced
+  priority       String         @default("Normal") // Normal, Important, Required
+  status         String         @default("Published") // Published, Draft, Archived
+  duration       String         @default("15m")
+  createdBy      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  watchHistory   WatchHistory[]
+}
+
+model WatchHistory {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId            String
+  video              Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  startedAt          DateTime  @default(now())
+  lastWatchedAt      DateTime  @default(now())
+  progressPercentage Int       @default(0)
+  completed          Boolean   @default(false)
+  completedAt        DateTime?
+
+  @@unique([userId, videoId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "MEMBER_APPROVED", "VIDEO_ADDED", "ROLE_UPDATED"
+  target    String   // e.g. "TV-002", "n8n Automation Video"
+  metadata  String?  // JSON additional details
+  timestamp DateTime @default(now())
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
