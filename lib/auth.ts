@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import type { Prisma } from '@prisma/client';
 import { db } from './db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'techveons-super-secret-jwt-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-jwt-secret-change-me';
 const COOKIE_NAME = 'techveons_session';
 
 export type UserWithProfile = Prisma.UserGetPayload<{
@@ -41,12 +41,36 @@ export async function comparePassword(password: string, hash: string): Promise<b
 }
 
 export function signToken(payload: UserSession): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, JWT_SECRET as string, { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): UserSession | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as UserSession;
+    const decoded = jwt.verify(token, JWT_SECRET as string);
+
+    if (typeof decoded === 'string' || !decoded || typeof decoded !== 'object') {
+      return null;
+    }
+
+    const payload = decoded as Partial<UserSession>;
+
+    if (
+      typeof payload.userId !== 'string' ||
+      typeof payload.email !== 'string' ||
+      typeof payload.role !== 'string' ||
+      typeof payload.status !== 'string'
+    ) {
+      return null;
+    }
+
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role,
+      status: payload.status,
+      memberId: payload.memberId,
+      fullName: payload.fullName,
+    };
   } catch (error) {
     return null;
   }

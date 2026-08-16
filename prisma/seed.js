@@ -4,29 +4,30 @@ const bcrypt = require('bcryptjs');
 const db = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting Techveons database seeding...');
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
-  // Clear existing records
-  await db.auditLog.deleteMany();
-  await db.notification.deleteMany();
-  await db.watchHistory.deleteMany();
-  await db.video.deleteMany();
-  await db.memberProfile.deleteMany();
-  await db.user.deleteMany();
-  await db.role.deleteMany();
-  await db.systemSetting.deleteMany();
+  if (!adminEmail || !adminPassword) {
+    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required for safe seeding.');
+  }
 
-  // Seed System Settings
-  await db.systemSetting.createMany({
-    data: [
-      { key: 'company_name', value: 'Techveons Creations' },
-      { key: 'announcement', value: 'Welcome to the Techveons Employee Digital Identity & Skill Platform 🚀' },
-      { key: 'primary_color', value: '#2563eb' },
-      { key: 'training_required_per_week', value: '2' },
-    ],
-  });
+  console.log('🌱 Starting safe Techveons database seeding...');
 
-  // Seed 6 Company Roles
+  const settings = [
+    { key: 'company_name', value: 'Techveons Creations' },
+    { key: 'announcement', value: 'Welcome to the Techveons Employee Digital Identity & Skill Platform 🚀' },
+    { key: 'primary_color', value: '#2563eb' },
+    { key: 'training_required_per_week', value: '2' },
+  ];
+
+  for (const setting of settings) {
+    await db.systemSetting.upsert({
+      where: { key: setting.key },
+      update: { value: setting.value },
+      create: setting,
+    });
+  }
+
   const roleData = [
     {
       name: 'AI Automation & AI Agents',
@@ -61,20 +62,25 @@ async function main() {
   ];
 
   const roles = [];
-  for (const r of roleData) {
-    const createdRole = await db.role.create({ data: r });
-    roles.push(createdRole);
+  for (const item of roleData) {
+    const role = await db.role.upsert({
+      where: { name: item.name },
+      update: item,
+      create: item,
+    });
+    roles.push(role);
   }
 
-  console.log(`✅ Created ${roles.length} company roles.`);
-
-  // Password hash for admin account (use the provided admin credentials)
-  const adminPasswordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Phoenixzz@2010', 10);
-
-  // Seed Admin Account (real admin only)
-  const adminUser = await db.user.create({
-    data: {
-      email: process.env.ADMIN_EMAIL || 'rishva448@gmail.com',
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+  const adminUser = await db.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      passwordHash: adminPasswordHash,
+      role: 'ADMIN',
+      status: 'APPROVED',
+    },
+    create: {
+      email: adminEmail,
       passwordHash: adminPasswordHash,
       role: 'ADMIN',
       status: 'APPROVED',
@@ -83,36 +89,37 @@ async function main() {
           memberId: 'TV-000',
           fullName: 'Rishva (Founder & Admin)',
           phone: '+91 9876543210',
-          email: process.env.ADMIN_EMAIL || 'rishva448@gmail.com',
+          email: adminEmail,
           profilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
           company: 'Techveons Creations',
           position: 'Founder & Head of Tech',
-          roleId: roles[0].id,
+          roleId: roles[0]?.id ?? null,
           bio: 'Platform owner and administrator.',
           skills: JSON.stringify(['Leadership', 'Product']),
           status: 'APPROVED',
         },
       },
     },
+    include: { profile: true },
   });
 
-  console.log(`✅ Created Admin account: ${adminUser.email} (use your real admin credentials)`);
+  console.log(`✅ Seed ensured admin account: ${adminUser.email}`);
 
-  // Audit Log sample entries
-  await db.auditLog.createMany({
-    data: [
-      { userId: adminUser.id, action: 'SYSTEM_INITIALIZED', target: 'Techveons Platform', metadata: 'Initial seed data loaded' },
-      { userId: adminUser.id, action: 'MEMBER_APPROVED', target: 'TV-001 (Guru)', metadata: 'Assigned AI Automation role' },
-      { userId: adminUser.id, action: 'VIDEO_PUBLISHED', target: 'n8n Automation Beginner Tutorial', metadata: 'Assigned to AI Automation' },
-    ],
+  await db.auditLog.create({
+    data: {
+      userId: adminUser.id,
+      action: 'SYSTEM_INITIALIZED',
+      target: 'Techveons Platform',
+      metadata: JSON.stringify({ source: 'seed' }),
+    },
   });
 
-  console.log('🎉 Database seeding completed successfully!');
+  console.log('🎉 Safe seeding completed successfully.');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Seeding failed:', e);
+  .catch((error) => {
+    console.error('❌ Seeding failed:', error.message || error);
     process.exit(1);
   })
   .finally(async () => {
