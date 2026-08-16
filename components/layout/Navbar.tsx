@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import type { NavbarUser } from '@/lib/auth';
 import {
   Bell,
   LogOut,
@@ -16,24 +17,7 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    profile?: {
-      fullName: string;
-      memberId: string;
-      position: string;
-      profilePhoto?: string;
-    };
-    notifications?: Array<{
-      id: string;
-      title: string;
-      message: string;
-      read: boolean;
-      createdAt: string;
-    }>;
-  } | null;
+  user?: NavbarUser | null;
 }
 
 export default function Navbar({ user }: NavbarProps) {
@@ -178,7 +162,7 @@ export default function Navbar({ user }: NavbarProps) {
                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-blue-600 flex items-center justify-center font-semibold text-white text-sm flex-shrink-0">
                     {user.profile?.profilePhoto ? (
                       <img
-                        src={user.profile.profilePhoto}
+                        src={user.profile.profilePhoto || undefined}
                         alt={user.profile.fullName}
                         className="w-full h-full object-cover"
                       />

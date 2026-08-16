@@ -1,10 +1,27 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import type { Prisma } from '@prisma/client';
 import { db } from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'techveons-super-secret-jwt-key-2026';
 const COOKIE_NAME = 'techveons_session';
+
+export type UserWithProfile = Prisma.UserGetPayload<{
+  include: {
+    profile: true;
+  };
+}>;
+
+export type NavbarUser = UserWithProfile & {
+  notifications?: Array<{
+    id: string;
+    title: string;
+    message: string;
+    read: boolean;
+    createdAt: string | Date;
+  }>;
+};
 
 export interface UserSession {
   userId: string;
@@ -46,7 +63,7 @@ export async function getSession(): Promise<UserSession | null> {
   }
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<UserWithProfile | null> {
   const session = await getSession();
   if (!session) return null;
 
