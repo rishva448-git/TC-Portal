@@ -17,7 +17,7 @@ export default function MobileNav() {
           href="/home"
           className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
             isNavActive('/home')
-              ? 'text-blue-400 bg-blue-600/10 border border-blue-500/20'
+              ? 'text-brand-500 bg-brand-500/10 border border-brand-500/20'
               : 'text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -29,7 +29,7 @@ export default function MobileNav() {
           href="/videos"
           className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
             isNavActive('/videos')
-              ? 'text-indigo-400 bg-indigo-600/10 border border-indigo-500/20'
+              ? 'text-brand-500 bg-brand-500/10 border border-brand-500/20'
               : 'text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -41,7 +41,7 @@ export default function MobileNav() {
           href="/history"
           className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
             isNavActive('/history')
-              ? 'text-amber-400 bg-amber-600/10 border border-amber-500/20'
+              ? 'text-brand-500 bg-brand-500/10 border border-brand-500/20'
               : 'text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -53,7 +53,7 @@ export default function MobileNav() {
           href="/dashboard"
           className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${
             isNavActive('/dashboard')
-              ? 'text-emerald-400 bg-emerald-600/10 border border-emerald-500/20'
+              ? 'text-brand-500 bg-brand-500/10 border border-brand-500/20'
               : 'text-gray-400 hover:text-gray-200'
           }`}
         >

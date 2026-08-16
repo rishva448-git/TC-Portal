@@ -9,18 +9,20 @@ export async function GET() {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    // Fetch user's notifications & role info
-    const notifications = await db.notification.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
+    // Fetch user's notifications & role info in parallel
+    const [notifications, role] = await Promise.all([
+      db.notification.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      user.profile?.roleId
+        ? db.role.findUnique({ where: { id: user.profile.roleId } })
+        : Promise.resolve(null),
+    ]);
 
     let roleName = 'Member';
-    if (user.profile?.roleId) {
-      const role = await db.role.findUnique({ where: { id: user.profile.roleId } });
-      if (role) roleName = role.name;
-    }
+    if (role) roleName = role.name;
 
     return NextResponse.json({
       authenticated: true,

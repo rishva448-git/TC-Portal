@@ -24,13 +24,17 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const analyticsRes = await fetch('/api/analytics');
+        // Load analytics and pending members in parallel
+        const [analyticsRes, membersRes] = await Promise.all([
+          fetch('/api/analytics'),
+          fetch('/api/members?status=PENDING&limit=5'), // Only load first 5 pending members
+        ]);
+
         const analyticsData = await analyticsRes.json();
         if (analyticsData.success) {
           setAnalytics(analyticsData);
         }
 
-        const membersRes = await fetch('/api/members?status=PENDING');
         const membersData = await membersRes.json();
         if (membersData.members) {
           setPendingMembers(membersData.members);

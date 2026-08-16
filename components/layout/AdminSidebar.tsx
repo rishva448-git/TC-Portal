@@ -58,11 +58,11 @@ export default function AdminSidebar() {
                     active
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-lg shadow-amber-500/10'
                       : link.highlight
-                      ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30'
+                      ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 hover:bg-brand-500/30'
                       : 'text-gray-300 hover:text-white hover:bg-gray-800/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : link.highlight ? 'text-blue-400' : 'text-gray-400'}`} />
+                  <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : link.highlight ? 'text-brand-500' : 'text-gray-400'}`} />
                   <span>{link.label}</span>
                 </Link>
               );
@@ -95,11 +95,11 @@ export default function AdminSidebar() {
                   active
                     ? 'text-amber-300 bg-amber-500/15'
                     : link.highlight
-                    ? 'text-blue-300'
+                    ? 'text-brand-300'
                     : 'text-gray-400'
                 }`}
               >
-                <Icon className={`w-4 h-4 mb-0.5 ${active ? 'text-amber-400' : link.highlight ? 'text-blue-400' : ''}`} />
+                <Icon className={`w-4 h-4 mb-0.5 ${active ? 'text-amber-400' : link.highlight ? 'text-brand-500' : ''}`} />
                 <span className="whitespace-nowrap">{link.short}</span>
               </Link>
             );

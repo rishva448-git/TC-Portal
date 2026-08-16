@@ -17,14 +17,17 @@ export default function VideoDetailPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const userRes = await fetch('/api/auth/me');
+        // Fetch user and video data in parallel
+        const [userRes, videoRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          params.id ? fetch(`/api/videos/${params.id}`) : Promise.reject('No video ID'),
+        ]);
+
         const userData = await userRes.json();
         if (userData.authenticated) setUser(userData.user);
 
         if (params.id) {
-          const videoRes = await fetch(`/api/videos/${params.id}`);
           const videoData = await videoRes.json();
-
           if (videoData.video) {
             setVideo(videoData.video);
           }

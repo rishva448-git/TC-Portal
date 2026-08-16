@@ -1,11 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -20,6 +20,10 @@ model User {
   watchHistory WatchHistory[]
   notifications Notification[]
   auditLogs    AuditLog[]
+
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model MemberProfile {
@@ -39,6 +43,9 @@ model MemberProfile {
   joiningDate  DateTime @default(now())
   lastActiveTime DateTime @default(now())
   status       String   @default("PENDING")
+
+  @@index([roleId])
+  @@index([status])
 }
 
 model Role {
@@ -69,6 +76,9 @@ model Video {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   watchHistory   WatchHistory[]
+
+  @@index([roleId])
+  @@index([status])
 }
 
 model WatchHistory {
@@ -84,6 +94,8 @@ model WatchHistory {
   completedAt        DateTime?
 
   @@unique([userId, videoId])
+  @@index([userId])
+  @@index([completed])
 }
 
 model Notification {
@@ -94,6 +106,9 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model AuditLog {
@@ -104,6 +119,9 @@ model AuditLog {
   target    String   // e.g. "TV-002", "n8n Automation Video"
   metadata  String?  // JSON additional details
   timestamp DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([userId])
 }
 
 model SystemSetting {

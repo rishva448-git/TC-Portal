@@ -15,11 +15,15 @@ export default function WatchHistoryPage() {
   useEffect(() => {
     async function loadHistory() {
       try {
-        const userRes = await fetch('/api/auth/me');
+        // Fetch user and history data in parallel
+        const [userRes, historyRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/history'),
+        ]);
+
         const userData = await userRes.json();
         if (userData.authenticated) setUser(userData.user);
 
-        const historyRes = await fetch('/api/history');
         const historyData = await historyRes.json();
         if (historyData.history) setHistoryItems(historyData.history);
       } catch (e) {

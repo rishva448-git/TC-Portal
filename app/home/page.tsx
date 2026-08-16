@@ -28,24 +28,24 @@ export default function HomePage() {
   useEffect(() => {
     async function loadHomeData() {
       try {
-        const userRes = await fetch('/api/auth/me');
+        // Fetch all data in parallel
+        const [userRes, videosRes, historyRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/videos'),
+          fetch('/api/history'),
+        ]);
+
         const userData = await userRes.json();
 
         if (userData.authenticated) {
           setUser(userData.user);
 
-          // Fetch role-prioritized videos
-          const videosRes = await fetch('/api/videos');
           const videosData = await videosRes.json();
-
           if (videosData.videos) {
             setVideos(videosData.videos);
           }
 
-          // Fetch watch history
-          const historyRes = await fetch('/api/history');
           const historyData = await historyRes.json();
-
           if (historyData.history) {
             setHistory(historyData.history);
           }

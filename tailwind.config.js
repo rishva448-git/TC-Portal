@@ -10,23 +10,23 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#faf8f0',
+          100: '#f5ecd1',
+          200: '#ebdca3',
+          300: '#dec26b',
+          400: '#d4ac3f',
+          500: '#D4AF37', // Techveons Gold
+          600: '#b78d2a',
+          700: '#926a21',
+          800: '#72511c',
+          900: '#5e4219',
+          950: '#33210b',
         },
         dark: {
-          bg: '#0B0F19',
-          card: '#111827',
-          border: '#1F2937',
-          surface: '#151D2F',
+          bg: '#000000', // Pitch Black
+          card: '#0B0B0C', // Near-Black
+          border: '#1E1E1E', // Very dark gray
+          surface: '#121213', // Slightly lighter near-black
         }
       },
       fontFamily: {
@@ -39,8 +39,8 @@ module.exports = {
       },
       keyframes: {
         glow: {
-          '0%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.5), 0 0 10px rgba(59, 130, 246, 0.3)' },
-          '100%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.5)' },
+          '0%': { boxShadow: '0 0 5px rgba(212, 175, 55, 0.3), 0 0 10px rgba(212, 175, 55, 0.2)' },
+          '100%': { boxShadow: '0 0 20px rgba(212, 175, 55, 0.6), 0 0 30px rgba(212, 175, 55, 0.4)' },
         }
       }
     },

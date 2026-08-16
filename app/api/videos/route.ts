@@ -7,10 +7,17 @@ export async function GET(request: Request) {
   try {
     const currentUser = await getCurrentUser();
 
-    // Non-admin users should see videos assigned to ALL members (roleId == null) and Published
+    // Non-admin users should see videos assigned to ALL members (roleId == null) or their specific role, and Published
     if (!currentUser || currentUser.role !== 'ADMIN') {
+      const userRoleId = currentUser?.profile?.roleId;
       const publicVideos = await db.video.findMany({
-        where: { roleId: null, status: 'Published' },
+        where: {
+          status: 'Published',
+          OR: [
+            { roleId: null },
+            ...(userRoleId ? [{ roleId: userRoleId }] : []),
+          ],
+        },
         include: { role: true },
         orderBy: { createdAt: 'desc' },
       });

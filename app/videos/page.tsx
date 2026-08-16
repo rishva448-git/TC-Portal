@@ -18,15 +18,19 @@ export default function VideosPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const userRes = await fetch('/api/auth/me');
+        // Fetch all data in parallel instead of sequential
+        const [userRes, rolesRes, videosRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/roles'),
+          fetch('/api/videos'),
+        ]);
+
         const userData = await userRes.json();
         if (userData.authenticated) setUser(userData.user);
 
-        const rolesRes = await fetch('/api/roles');
         const rolesData = await rolesRes.json();
         if (rolesData.roles) setRoles(rolesData.roles);
 
-        const videosRes = await fetch('/api/videos');
         const videosData = await videosRes.json();
         if (videosData.videos) setVideos(videosData.videos);
       } catch (e) {

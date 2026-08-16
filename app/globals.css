@@ -30,7 +30,7 @@
 
 body {
   font-family: 'Manrope', ui-sans-serif, sans-serif;
-  background-color: #0B0F19;
+  background-color: #000000;
   color: #F3F4F6;
   min-height: 100vh;
   letter-spacing: 0.01em;
@@ -43,17 +43,17 @@ h1, h2, h3, .font-display {
 
 /* Glassmorphism primitives */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.7);
+  background: rgba(10, 10, 12, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .glass-card {
-  background: linear-gradient(135deg, rgba(21, 29, 47, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+  background: linear-gradient(135deg, rgba(18, 18, 20, 0.95) 0%, rgba(10, 10, 12, 0.85) 100%);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 .glass-card-hover {
@@ -62,13 +62,13 @@ h1, h2, h3, .font-display {
 
 .glass-card-hover:hover {
   transform: translateY(-4px);
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 12px 40px 0 rgba(37, 99, 235, 0.25);
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 12px 40px 0 rgba(212, 175, 55, 0.15);
 }
 
 /* Tech badge holographic sheen */
 .id-card-sheen {
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.02) 50%, rgba(37,99,235,0.2) 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 50%, rgba(212,175,55,0.15) 100%);
 }
 
 /* Custom scrollbars */
@@ -78,16 +78,16 @@ h1, h2, h3, .font-display {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F19;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1F2937;
+  background: #1A1A1C;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #2D2D30;
 }
 
 .scrollbar-none {

@@ -36,15 +36,14 @@ export default function LoginPage() {
       }
 
       setSuccessMessage('Login successful! Redirecting...');
-
-      setTimeout(() => {
-        if (data.user.role === 'ADMIN') {
-          router.push('/admin');
-        } else {
-          router.push('/home');
-        }
-        router.refresh();
-      }, 800);
+      
+      // Redirect immediately without artificial delay
+      if (data.user.role === 'ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/home');
+      }
+      router.refresh();
     } catch (err) {
       setErrorMessage('An unexpected error occurred. Please try again.');
     } finally {

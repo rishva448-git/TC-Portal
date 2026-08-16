@@ -62,7 +62,7 @@ export default function YouTubePlayer({
   return (
     <div className="w-full space-y-4">
       {/* Responsive YouTube iFrame Embed */}
-      <div className="relative w-full aspect-video rounded-2xl overflow-hidden glass-card border border-blue-500/30 shadow-2xl bg-black">
+      <div className="relative w-full aspect-video rounded-2xl overflow-hidden glass-card border border-brand-500/30 shadow-2xl bg-black">
         <iframe
           src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&enablejsapi=1&rel=0`}
           title="YouTube video player"
@@ -78,10 +78,10 @@ export default function YouTubePlayer({
         <div className="w-full md:w-2/3 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-gray-300 flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-blue-400" />
+              <Clock className="w-4 h-4 text-brand-500" />
               Learning Progress Tracking
             </span>
-            <span className="text-blue-400 font-mono font-bold">
+            <span className="text-brand-500 font-mono font-bold">
               {progress}% {completed ? ' (Completed)' : ''}
             </span>
           </div>
@@ -91,7 +91,7 @@ export default function YouTubePlayer({
               className={`h-full transition-all duration-500 ${
                 completed
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-500'
+                  : 'bg-gradient-to-r from-brand-600 to-brand-400'
               }`}
               style={{ width: `${progress}%` }}
             ></div>
@@ -107,7 +107,7 @@ export default function YouTubePlayer({
               disabled={isUpdating}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 progress >= step
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  ? 'bg-brand-500 text-black shadow-md shadow-brand-500/20'
                   : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'
               }`}
             >

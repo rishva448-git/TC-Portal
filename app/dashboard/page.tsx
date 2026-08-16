@@ -26,17 +26,20 @@ export default function MemberDashboardPage() {
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const userRes = await fetch('/api/auth/me');
-        const userData = await userRes.json();
+        // Fetch all data in parallel instead of sequential
+        const [userRes, historyRes, videosRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/history'),
+          fetch('/api/videos'),
+        ]);
 
+        const userData = await userRes.json();
         if (userData.authenticated) {
           setUser(userData.user);
 
-          const historyRes = await fetch('/api/history');
           const historyData = await historyRes.json();
           if (historyData.history) setHistory(historyData.history);
 
-          const videosRes = await fetch('/api/videos');
           const videosData = await videosRes.json();
           if (videosData.videos) {
             const roleId = userData.user.profile?.roleId;

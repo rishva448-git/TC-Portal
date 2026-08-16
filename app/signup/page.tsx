@@ -70,10 +70,10 @@ export default function SignupPage() {
       }
 
       setSuccessMessage(`Registration successful! Your Member ID is ${data.memberId}. Your account is pending admin approval.`);
-
-      setTimeout(() => {
-        router.push('/login');
-      }, 2500);
+      
+      // Redirect after brief delay to let user see success message
+      // But redirect immediately is better - router.push will handle transition
+      router.push('/login');
     } catch (err) {
       setErrorMessage('An unexpected error occurred. Please try again.');
     } finally {
