@@ -20,7 +20,7 @@ export default function VideosPage() {
       try {
         // Fetch all data in parallel instead of sequential
         const [userRes, rolesRes, videosRes] = await Promise.all([
-          fetch('/api/auth/me'),
+          fetch('/api/auth/me?compact=true'),
           fetch('/api/roles'),
           fetch('/api/videos'),
         ]);

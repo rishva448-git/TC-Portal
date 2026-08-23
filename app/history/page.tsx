@@ -17,7 +17,7 @@ export default function WatchHistoryPage() {
       try {
         // Fetch user and history data in parallel
         const [userRes, historyRes] = await Promise.all([
-          fetch('/api/auth/me'),
+          fetch('/api/auth/me?compact=true'),
           fetch('/api/history'),
         ]);
 

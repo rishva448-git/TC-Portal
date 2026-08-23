@@ -30,7 +30,7 @@ export default function HomePage() {
       try {
         // Fetch all data in parallel
         const [userRes, videosRes, historyRes] = await Promise.all([
-          fetch('/api/auth/me'),
+          fetch('/api/auth/me?compact=true'),
           fetch('/api/videos'),
           fetch('/api/history'),
         ]);
