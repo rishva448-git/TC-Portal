@@ -9,8 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    // Parallelize all count queries
-    const [memberCounts, videoCounts, watchCounts] = await Promise.all([
+    const [memberCounts, videoCounts, watchCounts, roles, membersByRoleData, videosByRoleData, topVideoCounts] = await Promise.all([
       db.user.groupBy({
         by: ['role', 'status'],
         _count: { id: true },
@@ -23,6 +22,24 @@ export async function GET() {
       db.watchHistory.groupBy({
         by: ['completed'],
         _count: { id: true },
+      }),
+      db.role.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+      db.memberProfile.groupBy({
+        by: ['roleId'],
+        _count: { id: true },
+      }),
+      db.video.groupBy({
+        by: ['roleId'],
+        _count: { id: true },
+      }),
+      db.watchHistory.groupBy({
+        by: ['videoId'],
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 5,
       }),
     ]);
 
@@ -40,19 +57,6 @@ export async function GET() {
       ? Math.round((completedTrainings / totalWatches) * 100)
       : 0;
 
-    // Role breakdown metrics for charts - optimized
-    const [roles, membersByRoleData, videosByRoleData] = await Promise.all([
-      db.role.findMany(),
-      db.memberProfile.groupBy({
-        by: ['roleId'],
-        _count: { id: true },
-      }),
-      db.video.groupBy({
-        by: ['roleId'],
-        _count: { id: true },
-      }),
-    ]);
-
     const membersByRoleMap = new Map(membersByRoleData.map((m) => [m.roleId, m._count.id]));
     const videosByRoleMap = new Map(videosByRoleData.map((v) => [v.roleId, v._count.id]));
 
@@ -62,35 +66,25 @@ export async function GET() {
       videoCount: videosByRoleMap.get(r.id) || 0,
     }));
 
-    // Parallel fetch recent logs and top videos
-    const [recentLogs, topVideos] = await Promise.all([
-      db.auditLog.findMany({
-        take: 8,
-        orderBy: { timestamp: 'desc' },
-        include: { user: { include: { profile: true } } },
-      }),
-      db.video.findMany({
-        include: {
-          _count: {
-            select: { watchHistory: true },
+    const videoIds = topVideoCounts.map((item) => item.videoId);
+    const topVideos = videoIds.length
+      ? await db.video.findMany({
+          where: { id: { in: videoIds } },
+          select: {
+            id: true,
+            title: true,
+            thumbnailUrl: true,
+            role: { select: { name: true } },
           },
-          role: true,
-        },
-        take: 5,
-        orderBy: {
-          watchHistory: {
-            _count: 'desc',
-          },
-        },
-      }),
-    ]);
+        })
+      : [];
 
-    const formattedTopVideos = topVideos.map((v) => ({
-      id: v.id,
-      title: v.title,
-      thumbnailUrl: v.thumbnailUrl,
-      roleName: v.role ? v.role.name : 'All Members',
-      watchCount: v._count.watchHistory,
+    const topVideosWithCount = topVideos.map((video) => ({
+      id: video.id,
+      title: video.title,
+      thumbnailUrl: video.thumbnailUrl,
+      roleName: video.role ? video.role.name : 'All Members',
+      watchCount: topVideoCounts.find((entry) => entry.videoId === video.id)?._count.id || 0,
     }));
 
     const response = NextResponse.json({
@@ -106,11 +100,9 @@ export async function GET() {
         avgCompletionRate,
       },
       membersByRole,
-      topVideos: formattedTopVideos,
-      recentActivity: recentLogs,
+      topVideos: topVideosWithCount,
     });
 
-    // Add cache header - cache for 1 minute for dashboard freshness
     response.headers.set('Cache-Control', 'private, max-age=60, s-maxage=60');
     return response;
   } catch (error) {

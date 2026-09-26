@@ -1,49 +1,61 @@
-"use client";
-
-import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import MobileNav from '@/components/layout/MobileNav';
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
 import { Search, Play, Film } from 'lucide-react';
 
-export default function VideosPage() {
-  const [user, setUser] = useState<any>(null);
-  const [videos, setVideos] = useState<any[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRole, setSelectedRole] = useState('ALL');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
-  const [loading, setLoading] = useState(true);
+export default async function VideosPage({
+  searchParams,
+}: {
+  searchParams?: { q?: string; role?: string; difficulty?: string };
+}) {
+  const user = await getCurrentUser();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        // Fetch all data in parallel instead of sequential
-        const [userRes, rolesRes, videosRes] = await Promise.all([
-          fetch('/api/auth/me?compact=true'),
-          fetch('/api/roles'),
-          fetch('/api/videos'),
-        ]);
+  if (!user) {
+    redirect('/login');
+  }
 
-        const userData = await userRes.json();
-        if (userData.authenticated) setUser(userData.user);
+  const searchQuery = (searchParams?.q ?? '').trim();
+  const selectedRole = searchParams?.role ?? 'ALL';
+  const selectedDifficulty = searchParams?.difficulty ?? 'ALL';
 
-        const rolesData = await rolesRes.json();
-        if (rolesData.roles) setRoles(rolesData.roles);
+  const [roles, videos] = await Promise.all([
+    db.role.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    db.video.findMany({
+      where: {
+        status: 'Published',
+        OR: [
+          { roleId: null },
+          ...(user.profile?.roleId ? [{ roleId: user.profile.roleId }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        thumbnailUrl: true,
+        purpose: true,
+        description: true,
+        roleId: true,
+        difficulty: true,
+        priority: true,
+        duration: true,
+        role: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
 
-        const videosData = await videosRes.json();
-        if (videosData.videos) setVideos(videosData.videos);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
+  const videoList = videos.map((video) => ({
+    ...video,
+    roleName: video.role ? video.role.name : 'All Members',
+  }));
 
-    loadData();
-  }, []);
-
-  const filteredVideos = videos.filter((v) => {
+  const filteredVideos = videoList.filter((v) => {
     const matchesSearch =
       v.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.purpose.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -54,6 +66,8 @@ export default function VideosPage() {
 
     return matchesSearch && matchesRole && matchesDifficulty;
   });
+
+  const roleFilterLabel = selectedRole === 'ALL' ? 'All Roles & Training' : roles.find((r) => r.id === selectedRole)?.name ?? 'Role';
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-gray-100 pb-24 md:pb-12">
@@ -77,13 +91,20 @@ export default function VideosPage() {
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
               <Search className="w-4 h-4" />
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search training by title, purpose, or skill..."
-              className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-950/80 border border-gray-800 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-all shadow-inner"
-            />
+            <form className="relative max-w-xl" action="/videos" method="get">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                name="q"
+                defaultValue={searchQuery}
+                placeholder="Search training by title, purpose, or skill..."
+                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-950/80 border border-gray-800 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+              />
+              {selectedRole !== 'ALL' && <input type="hidden" name="role" value={selectedRole} />}
+              {selectedDifficulty !== 'ALL' && <input type="hidden" name="difficulty" value={selectedDifficulty} />}
+            </form>
           </div>
         </div>
 
@@ -93,8 +114,8 @@ export default function VideosPage() {
             Filter By Role
           </p>
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            <button
-              onClick={() => setSelectedRole('ALL')}
+            <Link
+              href={{ pathname: '/videos', query: { ...(searchQuery ? { q: searchQuery } : {}), ...(selectedDifficulty !== 'ALL' ? { difficulty: selectedDifficulty } : {}) } }}
               className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedRole === 'ALL'
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25 border border-blue-400'
@@ -102,12 +123,12 @@ export default function VideosPage() {
               }`}
             >
               All Roles & Training
-            </button>
+            </Link>
 
             {roles.map((r) => (
-              <button
+              <Link
                 key={r.id}
-                onClick={() => setSelectedRole(r.id)}
+                href={{ pathname: '/videos', query: { ...(searchQuery ? { q: searchQuery } : {}), role: r.id, ...(selectedDifficulty !== 'ALL' ? { difficulty: selectedDifficulty } : {}) } }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   selectedRole === r.id
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25 border border-blue-400'
@@ -115,7 +136,7 @@ export default function VideosPage() {
                 }`}
               >
                 {r.name}
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -124,9 +145,9 @@ export default function VideosPage() {
         <div className="flex items-center space-x-2 text-xs">
           <span className="text-gray-400 font-medium">Difficulty:</span>
           {['ALL', 'Beginner', 'Intermediate', 'Advanced'].map((diff) => (
-            <button
+            <Link
               key={diff}
-              onClick={() => setSelectedDifficulty(diff)}
+              href={{ pathname: '/videos', query: { ...(searchQuery ? { q: searchQuery } : {}), ...(selectedRole !== 'ALL' ? { role: selectedRole } : {}), ...(diff !== 'ALL' ? { difficulty: diff } : {}) } }}
               className={`px-3 py-1 rounded-lg font-semibold transition-all ${
                 selectedDifficulty === diff
                   ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
@@ -134,9 +155,15 @@ export default function VideosPage() {
               }`}
             >
               {diff}
-            </button>
+            </Link>
           ))}
         </div>
+
+        {searchQuery || selectedRole !== 'ALL' || selectedDifficulty !== 'ALL' ? (
+          <p className="text-xs text-gray-400">
+            Showing {filteredVideos.length} results for {searchQuery ? `“${searchQuery}”` : 'training catalog'} • {roleFilterLabel}
+          </p>
+        ) : null}
 
         {/* VIDEO CARDS GRID */}
         {filteredVideos.length > 0 ? (

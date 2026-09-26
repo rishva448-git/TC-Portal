@@ -37,13 +37,25 @@ export async function GET(request: Request) {
 
     const skip = (page - 1) * limit;
 
-    const [members, total] = await Promise.all([
+    const [members, total, roles] = await Promise.all([
       db.user.findMany({
         where: whereClause,
-        include: {
-          profile: true,
-          _count: {
-            select: { watchHistory: true },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          profile: {
+            select: {
+              id: true,
+              memberId: true,
+              fullName: true,
+              position: true,
+              roleId: true,
+              profilePhoto: true,
+              skills: true,
+            },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -51,29 +63,29 @@ export async function GET(request: Request) {
         take: limit,
       }),
       db.user.count({ where: whereClause }),
+      db.role.findMany({
+        select: { id: true, name: true },
+      }),
     ]);
 
-    const roles = await db.role.findMany();
     const roleMap = new Map(roles.map((r) => [r.id, r.name]));
-
-    // Fetch watch stats - count completed vs total
-    const watchHistoryData = await db.watchHistory.findMany({
-      select: {
-        userId: true,
-        completed: true,
-      },
-    });
-
-    // Group by userId and count completed
     const watchStatsMap = new Map<string, { total: number; completed: number }>();
-    for (const record of watchHistoryData) {
-      if (!watchStatsMap.has(record.userId)) {
-        watchStatsMap.set(record.userId, { total: 0, completed: 0 });
-      }
-      const stats = watchStatsMap.get(record.userId)!;
-      stats.total += 1;
-      if (record.completed) {
-        stats.completed += 1;
+
+    if (members.length > 0) {
+      const memberIds = members.map((member) => member.id);
+      const historyStats = await db.watchHistory.groupBy({
+        by: ['userId', 'completed'],
+        _count: { id: true },
+        where: { userId: { in: memberIds } },
+      });
+
+      for (const record of historyStats) {
+        const existing = watchStatsMap.get(record.userId) ?? { total: 0, completed: 0 };
+        existing.total += record._count.id;
+        if (record.completed) {
+          existing.completed += record._count.id;
+        }
+        watchStatsMap.set(record.userId, existing);
       }
     }
 

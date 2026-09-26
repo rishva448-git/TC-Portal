@@ -6,31 +6,62 @@ import { extractYouTubeId, getYouTubeThumbnail } from '@/lib/youtube';
 export async function GET(request: Request) {
   try {
     const currentUser = await getCurrentUser();
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get('page') ?? '1'));
+    const limit = Math.min(24, Math.max(1, Number(searchParams.get('limit') ?? '12')));
+    const skip = (page - 1) * limit;
 
-    // Non-admin users should see videos assigned to ALL members (roleId == null) or their specific role, and Published
     if (!currentUser || currentUser.role !== 'ADMIN') {
       const userRoleId = currentUser?.profile?.roleId;
-      const publicVideos = await db.video.findMany({
-        where: {
-          status: 'Published',
-          OR: [
-            { roleId: null },
-            ...(userRoleId ? [{ roleId: userRoleId }] : []),
-          ],
-        },
-        include: { role: true },
-        orderBy: { createdAt: 'desc' },
-      });
+      const whereClause = {
+        status: 'Published',
+        OR: [
+          { roleId: null },
+          ...(userRoleId ? [{ roleId: userRoleId }] : []),
+        ],
+      };
 
-      const formattedPublic = publicVideos.map((v) => ({
+      const [videos, total] = await Promise.all([
+        db.video.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            title: true,
+            youtubeUrl: true,
+            youtubeVideoId: true,
+            thumbnailUrl: true,
+            description: true,
+            purpose: true,
+            roleId: true,
+            category: true,
+            difficulty: true,
+            priority: true,
+            status: true,
+            duration: true,
+            createdAt: true,
+            role: {
+              select: { id: true, name: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        db.video.count({ where: whereClause }),
+      ]);
+
+      const formattedPublic = videos.map((v) => ({
         ...v,
         roleName: v.role ? v.role.name : 'All Members',
       }));
 
-      return NextResponse.json({ success: true, videos: formattedPublic });
+      return NextResponse.json({
+        success: true,
+        videos: formattedPublic,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      });
     }
 
-    const { searchParams } = new URL(request.url);
     const roleId = searchParams.get('roleId');
     const category = searchParams.get('category');
     const difficulty = searchParams.get('difficulty');
@@ -44,10 +75,7 @@ export async function GET(request: Request) {
     }
 
     if (roleId && roleId !== 'ALL') {
-      whereClause.OR = [
-        { roleId: roleId },
-        { roleId: null },
-      ];
+      whereClause.roleId = roleId;
     }
 
     if (category && category !== 'ALL') whereClause.category = category;
@@ -63,18 +91,45 @@ export async function GET(request: Request) {
       ];
     }
 
-    const videos = await db.video.findMany({
-      where: whereClause,
-      include: { role: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [videos, total] = await Promise.all([
+      db.video.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          title: true,
+          youtubeUrl: true,
+          youtubeVideoId: true,
+          thumbnailUrl: true,
+          description: true,
+          purpose: true,
+          roleId: true,
+          category: true,
+          difficulty: true,
+          priority: true,
+          status: true,
+          duration: true,
+          createdAt: true,
+          role: {
+            select: { id: true, name: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      db.video.count({ where: whereClause }),
+    ]);
 
     const formattedVideos = videos.map((v) => ({
       ...v,
       roleName: v.role ? v.role.name : 'All Members',
     }));
 
-    return NextResponse.json({ success: true, videos: formattedVideos });
+    return NextResponse.json({
+      success: true,
+      videos: formattedVideos,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error('Fetch videos error:', error);
     return NextResponse.json({ error: 'Failed to fetch videos' }, { status: 500 });

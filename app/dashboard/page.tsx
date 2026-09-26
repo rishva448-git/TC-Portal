@@ -1,68 +1,58 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import MobileNav from '@/components/layout/MobileNav';
 import DigitalIdCard from '@/components/digital-id/DigitalIdCard';
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
 import {
   LayoutDashboard,
   Award,
   Film,
-  CheckCircle2,
-  Clock,
   Sparkles,
-  User,
   Edit3,
   BookOpen
 } from 'lucide-react';
 
-export default function MemberDashboardPage() {
-  const [user, setUser] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
-  const [assignedVideos, setAssignedVideos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function MemberDashboardPage() {
+  const user = await getCurrentUser();
 
-  useEffect(() => {
-    async function loadDashboardData() {
-      try {
-        // Fetch all data in parallel instead of sequential
-        const [userRes, historyRes, videosRes] = await Promise.all([
-          fetch('/api/auth/me'),
-          fetch('/api/history'),
-          fetch('/api/videos'),
-        ]);
-
-        const userData = await userRes.json();
-        if (userData.authenticated) {
-          setUser(userData.user);
-
-          const historyData = await historyRes.json();
-          if (historyData.history) setHistory(historyData.history);
-
-          const videosData = await videosRes.json();
-          if (videosData.videos) {
-            const roleId = userData.user.profile?.roleId;
-            setAssignedVideos(videosData.videos.filter((v: any) => v.roleId === roleId || !v.roleId));
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboardData();
-  }, []);
-
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-[#0B0F19] text-white flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  if (!user) {
+    redirect('/login');
   }
+
+  const roleName = user.profile?.roleId ? await db.role.findUnique({
+    where: { id: user.profile.roleId },
+    select: { name: true },
+  }) : null;
+
+  const [history, assignedVideos] = await Promise.all([
+    db.watchHistory.findMany({
+      where: { userId: user.id },
+      select: {
+        completed: true,
+        progressPercentage: true,
+      },
+    }),
+    db.video.findMany({
+      where: {
+        status: 'Published',
+        OR: [
+          { roleId: null },
+          ...(user.profile?.roleId ? [{ roleId: user.profile.roleId }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        thumbnailUrl: true,
+        purpose: true,
+        roleId: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    }),
+  ]);
 
   const totalWatched = history.length;
   const completedCount = history.filter((h) => h.completed).length;
@@ -79,7 +69,7 @@ export default function MemberDashboardPage() {
     'Sales & Marketing': ['Lead Generation', 'Sales', 'Cold Outreach', 'Client Communication', 'Social Media Marketing', 'Copywriting', 'Branding'],
   };
 
-  const currentRoleName = user.profile?.roleName || 'Frontend Developer';
+  const currentRoleName = roleName?.name || 'Member';
   const roleSkills = roleRecommendedSkills[currentRoleName] || roleRecommendedSkills['Frontend Developer'];
 
   return (
@@ -122,13 +112,13 @@ export default function MemberDashboardPage() {
                 memberId: user.profile?.memberId || 'TV-001',
                 fullName: user.profile?.fullName || '',
                 email: user.email,
-                phone: user.profile?.phone,
+                phone: user.profile?.phone ?? undefined,
                 position: user.profile?.position || '',
                 roleName: currentRoleName,
                 company: user.profile?.company || 'Techveons Creations',
-                profilePhoto: user.profile?.profilePhoto,
-                skills: user.profile?.skills || [],
-                joiningDate: user.profile?.joiningDate,
+                profilePhoto: user.profile?.profilePhoto ?? undefined,
+                skills: typeof user.profile?.skills === 'string' ? JSON.parse(user.profile.skills || '[]') : Array.isArray(user.profile?.skills) ? user.profile.skills : [],
+                joiningDate: user.profile?.joiningDate ? new Date(user.profile.joiningDate).toISOString() : undefined,
                 status: user.status,
               }}
             />

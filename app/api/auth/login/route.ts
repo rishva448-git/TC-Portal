@@ -15,7 +15,21 @@ export async function POST(request: Request) {
 
     const user = await db.user.findUnique({
       where: { email: emailLc },
-      include: { profile: true },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        role: true,
+        status: true,
+        profile: {
+          select: {
+            id: true,
+            memberId: true,
+            fullName: true,
+            roleId: true,
+          },
+        },
+      },
     });
 
     if (!user) {

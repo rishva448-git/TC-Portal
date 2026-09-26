@@ -10,7 +10,10 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const filterStatus = searchParams.get('status'); // "in_progress", "completed", "all"
+    const filterStatus = searchParams.get('status');
+    const page = Math.max(1, Number(searchParams.get('page') ?? '1'));
+    const limit = Math.min(24, Math.max(1, Number(searchParams.get('limit') ?? '12')));
+    const skip = (page - 1) * limit;
 
     const whereClause: any = {
       userId: currentUser.id,
@@ -23,15 +26,38 @@ export async function GET(request: Request) {
       whereClause.progressPercentage = { gt: 0 };
     }
 
-    const history = await db.watchHistory.findMany({
-      where: whereClause,
-      include: {
-        video: {
-          include: { role: true },
+    const [history, total] = await Promise.all([
+      db.watchHistory.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          videoId: true,
+          startedAt: true,
+          lastWatchedAt: true,
+          progressPercentage: true,
+          completed: true,
+          completedAt: true,
+          video: {
+            select: {
+              id: true,
+              title: true,
+              thumbnailUrl: true,
+              duration: true,
+              category: true,
+              difficulty: true,
+              purpose: true,
+              role: {
+                select: { id: true, name: true },
+              },
+            },
+          },
         },
-      },
-      orderBy: { lastWatchedAt: 'desc' },
-    });
+        orderBy: { lastWatchedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      db.watchHistory.count({ where: whereClause }),
+    ]);
 
     const formattedHistory = history.map((h) => ({
       id: h.id,
@@ -50,7 +76,16 @@ export async function GET(request: Request) {
       completedAt: h.completedAt,
     }));
 
-    return NextResponse.json({ success: true, history: formattedHistory });
+    return NextResponse.json({
+      success: true,
+      history: formattedHistory,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch watch history' }, { status: 500 });
   }
@@ -85,37 +120,37 @@ export async function POST(request: Request) {
           videoId,
         },
       },
+      select: {
+        id: true,
+        progressPercentage: true,
+        completed: true,
+        completedAt: true,
+      },
     });
 
-    let historyRecord;
-
-    if (existingHistory) {
-      // Do not downgrade progress if already completed
-      const finalProgress = Math.max(existingHistory.progressPercentage, newProgress);
-      const finalCompleted = existingHistory.completed || isCompleted;
-
-      historyRecord = await db.watchHistory.update({
-        where: { id: existingHistory.id },
-        data: {
-          progressPercentage: finalProgress,
-          completed: finalCompleted,
-          lastWatchedAt: new Date(),
-          completedAt: finalCompleted && !existingHistory.completed ? new Date() : existingHistory.completedAt,
-        },
-      });
-    } else {
-      historyRecord = await db.watchHistory.create({
-        data: {
+    const historyRecord = await db.watchHistory.upsert({
+      where: {
+        userId_videoId: {
           userId: currentUser.id,
           videoId,
-          progressPercentage: newProgress,
-          completed: isCompleted,
-          startedAt: new Date(),
-          lastWatchedAt: new Date(),
-          completedAt: isCompleted ? new Date() : null,
         },
-      });
-    }
+      },
+      update: {
+        progressPercentage: Math.max(existingHistory?.progressPercentage ?? 0, newProgress),
+        completed: existingHistory?.completed || isCompleted,
+        lastWatchedAt: new Date(),
+        completedAt: isCompleted ? new Date() : existingHistory?.completedAt ?? null,
+      },
+      create: {
+        userId: currentUser.id,
+        videoId,
+        progressPercentage: newProgress,
+        completed: isCompleted,
+        startedAt: new Date(),
+        lastWatchedAt: new Date(),
+        completedAt: isCompleted ? new Date() : null,
+      },
+    });
 
     return NextResponse.json({
       success: true,

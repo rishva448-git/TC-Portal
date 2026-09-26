@@ -9,15 +9,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    // Fetch user's notifications & role info in parallel
     const [notifications, role] = await Promise.all([
       db.notification.findMany({
         where: { userId: user.id },
+        select: {
+          id: true,
+          title: true,
+          message: true,
+          read: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
       user.profile?.roleId
-        ? db.role.findUnique({ where: { id: user.profile.roleId } })
+        ? db.role.findUnique({
+            where: { id: user.profile.roleId },
+            select: { id: true, name: true },
+          })
         : Promise.resolve(null),
     ]);
 

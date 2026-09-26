@@ -1,42 +1,60 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import MobileNav from '@/components/layout/MobileNav';
-import { History, Play, CheckCircle2, Clock, Film } from 'lucide-react';
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { History, Play } from 'lucide-react';
 
-export default function WatchHistoryPage() {
-  const [user, setUser] = useState<any>(null);
-  const [historyItems, setHistoryItems] = useState<any[]>([]);
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'in_progress', 'completed'
-  const [loading, setLoading] = useState(true);
+export default async function WatchHistoryPage({
+  searchParams,
+}: {
+  searchParams?: { filter?: string };
+}) {
+  const user = await getCurrentUser();
 
-  useEffect(() => {
-    async function loadHistory() {
-      try {
-        // Fetch user and history data in parallel
-        const [userRes, historyRes] = await Promise.all([
-          fetch('/api/auth/me?compact=true'),
-          fetch('/api/history'),
-        ]);
+  if (!user) {
+    redirect('/login');
+  }
 
-        const userData = await userRes.json();
-        if (userData.authenticated) setUser(userData.user);
+  const filterStatus = searchParams?.filter ?? 'all';
 
-        const historyData = await historyRes.json();
-        if (historyData.history) setHistoryItems(historyData.history);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
+  const historyItems = await db.watchHistory.findMany({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      videoId: true,
+      progressPercentage: true,
+      completed: true,
+      lastWatchedAt: true,
+      video: {
+        select: {
+          title: true,
+          thumbnailUrl: true,
+          duration: true,
+          purpose: true,
+          role: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { lastWatchedAt: 'desc' },
+    take: 12,
+  });
 
-    loadHistory();
-  }, []);
+  const historyList = historyItems.map((item) => ({
+    id: item.id,
+    videoId: item.videoId,
+    videoTitle: item.video.title,
+    thumbnailUrl: item.video.thumbnailUrl,
+    roleName: item.video.role ? item.video.role.name : 'All Members',
+    duration: item.video.duration,
+    purpose: item.video.purpose,
+    progressPercentage: item.progressPercentage,
+    completed: item.completed,
+    lastWatchedAt: item.lastWatchedAt,
+  }));
 
-  const filteredItems = historyItems.filter((item) => {
+  const filteredItems = historyList.filter((item) => {
     if (filterStatus === 'completed') return item.completed;
     if (filterStatus === 'in_progress') return !item.completed;
     return true;
@@ -61,8 +79,8 @@ export default function WatchHistoryPage() {
 
           {/* Filter Tabs */}
           <div className="flex items-center space-x-2 bg-gray-950 p-1.5 rounded-xl border border-gray-800 text-xs">
-            <button
-              onClick={() => setFilterStatus('all')}
+            <Link
+              href={{ pathname: '/history', query: filterStatus === 'all' ? undefined : {} }}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
                 filterStatus === 'all'
                   ? 'bg-blue-600 text-white shadow-md'
@@ -70,9 +88,9 @@ export default function WatchHistoryPage() {
               }`}
             >
               All ({historyItems.length})
-            </button>
-            <button
-              onClick={() => setFilterStatus('in_progress')}
+            </Link>
+            <Link
+              href={{ pathname: '/history', query: { filter: 'in_progress' } }}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
                 filterStatus === 'in_progress'
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
@@ -80,9 +98,9 @@ export default function WatchHistoryPage() {
               }`}
             >
               In Progress ({historyItems.filter((i) => !i.completed).length})
-            </button>
-            <button
-              onClick={() => setFilterStatus('completed')}
+            </Link>
+            <Link
+              href={{ pathname: '/history', query: { filter: 'completed' } }}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
                 filterStatus === 'completed'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -90,7 +108,7 @@ export default function WatchHistoryPage() {
               }`}
             >
               Completed ({historyItems.filter((i) => i.completed).length})
-            </button>
+            </Link>
           </div>
         </div>
 

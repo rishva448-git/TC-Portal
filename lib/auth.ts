@@ -8,8 +8,32 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-jwt-secret-change-me';
 const COOKIE_NAME = 'techveons_session';
 
 export type UserWithProfile = Prisma.UserGetPayload<{
-  include: {
-    profile: true;
+  select: {
+    id: true;
+    email: true;
+    role: true;
+    status: true;
+    createdAt: true;
+    updatedAt: true;
+    profile: {
+      select: {
+        id: true;
+        userId: true;
+        memberId: true;
+        fullName: true;
+        phone: true;
+        email: true;
+        profilePhoto: true;
+        company: true;
+        position: true;
+        roleId: true;
+        bio: true;
+        skills: true;
+        joiningDate: true;
+        lastActiveTime: true;
+        status: true;
+      };
+    };
   };
 }>;
 
@@ -93,8 +117,32 @@ export async function getCurrentUser(): Promise<UserWithProfile | null> {
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    include: {
-      profile: true,
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      profile: {
+        select: {
+          id: true,
+          userId: true,
+          memberId: true,
+          fullName: true,
+          phone: true,
+          email: true,
+          profilePhoto: true,
+          company: true,
+          position: true,
+          roleId: true,
+          bio: true,
+          skills: true,
+          joiningDate: true,
+          lastActiveTime: true,
+          status: true,
+        },
+      },
     },
   });
 

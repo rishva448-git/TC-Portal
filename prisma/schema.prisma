@@ -24,6 +24,7 @@ model User {
   @@index([role])
   @@index([status])
   @@index([createdAt])
+  @@index([email, status])
 }
 
 model MemberProfile {
@@ -79,6 +80,10 @@ model Video {
 
   @@index([roleId])
   @@index([status])
+  @@index([roleId, status])
+  @@index([category, status])
+  @@index([status, createdAt])
+  @@index([priority, status])
 }
 
 model WatchHistory {
@@ -96,6 +101,9 @@ model WatchHistory {
   @@unique([userId, videoId])
   @@index([userId])
   @@index([completed])
+  @@index([userId, lastWatchedAt])
+  @@index([videoId, userId])
+  @@index([completed, lastWatchedAt])
 }
 
 model Notification {
@@ -109,6 +117,7 @@ model Notification {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, read, createdAt])
 }
 
 model AuditLog {
@@ -122,6 +131,8 @@ model AuditLog {
 
   @@index([timestamp])
   @@index([userId])
+  @@index([userId, timestamp])
+  @@index([action, timestamp])
 }
 
 model SystemSetting {

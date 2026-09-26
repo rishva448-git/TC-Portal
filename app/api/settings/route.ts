@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
+export const revalidate = 300;
+
 export async function GET() {
   try {
     const settingsList = await db.systemSetting.findMany();
