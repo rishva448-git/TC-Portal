@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
-import { extractYouTubeId, getYouTubeThumbnail, fetchYouTubeMetadata } from '@/lib/youtube';
+import type { Prisma } from '@prisma/client';
+import { extractYouTubeId, getYouTubeThumbnail, fetchVerifiedYouTubeMetadata, isValidYouTubeUrl } from '@/lib/youtube';
 import type { ToolContext, ToolResult, ActionCard } from './types';
 
 // Helper: Require Admin permission
@@ -14,10 +15,11 @@ async function createAuditLog(
   context: ToolContext,
   action: string,
   target: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, any>,
+  client: Prisma.TransactionClient | typeof db = db
 ) {
   try {
-    await db.auditLog.create({
+    await client.auditLog.create({
       data: {
         userId: context.currentUser.id,
         action,
@@ -27,7 +29,22 @@ async function createAuditLog(
     });
   } catch (error) {
     console.error('AuditLog creation failed:', error);
+    throw new Error('The action could not be recorded in the audit log, so it was not reported as successful.');
   }
+}
+
+export async function auditedWrite<T>(
+  context: ToolContext,
+  action: string,
+  target: string,
+  metadata: Record<string, any>,
+  write: (transaction: Prisma.TransactionClient) => Promise<T>
+): Promise<T> {
+  return db.$transaction(async (transaction) => {
+    const result = await write(transaction);
+    await createAuditLog(context, action, target, metadata, transaction);
+    return result;
+  });
 }
 
 // Helper: Find Role by ID or Name
@@ -142,14 +159,20 @@ export async function addVideoTool(
     return { success: false, message: 'YouTube URL is required to add a video.' };
   }
 
-  const youtubeVideoId = extractYouTubeId(youtubeUrl);
+  const youtubeVideoId = isValidYouTubeUrl(youtubeUrl) ? extractYouTubeId(youtubeUrl) : null;
   if (!youtubeVideoId) {
     return { success: false, message: 'Invalid YouTube URL. Please provide a valid YouTube watch link.' };
   }
 
   // Fetch real YouTube metadata (title, author, thumbnail)
-  const meta = await fetchYouTubeMetadata(youtubeUrl);
-  const finalTitle = params.title || meta?.title || `Training Video (${youtubeVideoId})`;
+  const meta = await fetchVerifiedYouTubeMetadata(youtubeUrl);
+  if (!meta) {
+    return { success: false, message: 'YouTube could not verify this video URL. Please provide a working public video link.' };
+  }
+  const finalTitle = params.title?.trim() || meta?.title?.trim();
+  if (!finalTitle) {
+    return { success: false, message: 'I could not retrieve the video title from YouTube. Please provide the video title, then submit the command again.' };
+  }
   const finalThumbnail = meta?.thumbnailUrl || getYouTubeThumbnail(youtubeVideoId);
 
   // Resolve Role
@@ -158,16 +181,14 @@ export async function addVideoTool(
 
   if (params.roleId && params.roleId !== 'ALL') {
     const role = await findRoleByIdOrName(params.roleId);
-    if (role) {
-      targetRoleId = role.id;
-      targetRoleName = role.name;
-    }
+    if (!role) return { success: false, message: `Role not found for '${params.roleId}'. Please provide an existing role name.` };
+    targetRoleId = role.id;
+    targetRoleName = role.name;
   } else if (params.roleName && params.roleName.toUpperCase() !== 'ALL') {
     const role = await findRoleByIdOrName(params.roleName);
-    if (role) {
-      targetRoleId = role.id;
-      targetRoleName = role.name;
-    }
+    if (!role) return { success: false, message: `Role not found for '${params.roleName}'. Please provide an existing role name.` };
+    targetRoleId = role.id;
+    targetRoleName = role.name;
   }
 
   const finalPurpose =
@@ -176,7 +197,11 @@ export async function addVideoTool(
       ? `Mandatory training course for ${targetRoleName} role development.`
       : 'Core professional skill training for all company members.');
 
-  const createdVideo = await db.video.create({
+  const createdVideo = await auditedWrite(context, 'TC_AI_VIDEO_CREATED', finalTitle, {
+    youtubeUrl,
+    roleId: targetRoleId,
+    roleName: targetRoleName,
+  }, (transaction) => transaction.video.create({
     data: {
       title: finalTitle,
       youtubeUrl,
@@ -193,14 +218,7 @@ export async function addVideoTool(
       createdBy: context.currentUser.profile?.fullName || 'Admin',
     },
     include: { role: true },
-  });
-
-  await createAuditLog(context, 'TC_AI_VIDEO_CREATED', createdVideo.title, {
-    videoId: createdVideo.id,
-    youtubeUrl,
-    roleId: targetRoleId,
-    roleName: targetRoleName,
-  });
+  }));
 
   const card: ActionCard = {
     type: 'video_preview',
@@ -263,29 +281,29 @@ export async function editVideoTool(
   if (params.duration !== undefined) updateData.duration = params.duration;
 
   if (params.youtubeUrl) {
-    const vidId = extractYouTubeId(params.youtubeUrl);
-    if (vidId) {
-      updateData.youtubeUrl = params.youtubeUrl;
-      updateData.youtubeVideoId = vidId;
-      updateData.thumbnailUrl = getYouTubeThumbnail(vidId);
-    }
+    const vidId = isValidYouTubeUrl(params.youtubeUrl) ? extractYouTubeId(params.youtubeUrl) : null;
+    if (!vidId) return { success: false, message: 'Invalid YouTube URL. Provide a valid YouTube video URL.' };
+    updateData.youtubeUrl = params.youtubeUrl;
+    updateData.youtubeVideoId = vidId;
+    updateData.thumbnailUrl = getYouTubeThumbnail(vidId);
   }
 
   if (params.roleId !== undefined || params.roleName !== undefined) {
     const role = await findRoleByIdOrName((params.roleId || params.roleName || '') as string);
+    if ((params.roleId || params.roleName) && !role) {
+      return { success: false, message: `Role not found for '${params.roleId || params.roleName}'.` };
+    }
     updateData.roleId = role ? role.id : null;
   }
 
-  const updatedVideo = await db.video.update({
+  const updatedVideo = await auditedWrite(context, 'TC_AI_VIDEO_UPDATED', video.title, {
+    videoId: video.id,
+    updates: updateData,
+  }, (transaction) => transaction.video.update({
     where: { id: video.id },
     data: updateData,
     include: { role: true },
-  });
-
-  await createAuditLog(context, 'TC_AI_VIDEO_UPDATED', updatedVideo.title, {
-    videoId: updatedVideo.id,
-    updates: updateData,
-  });
+  }));
 
   return {
     success: true,
@@ -306,14 +324,12 @@ export async function archiveVideoTool(
     return { success: false, message: `Video not found with identifier '${params.videoId || params.videoTitle}'.` };
   }
 
-  const archived = await db.video.update({
+  const archived = await auditedWrite(context, 'TC_AI_VIDEO_ARCHIVED', video.title, {
+    videoId: video.id,
+  }, (transaction) => transaction.video.update({
     where: { id: video.id },
     data: { status: 'Archived' },
-  });
-
-  await createAuditLog(context, 'TC_AI_VIDEO_ARCHIVED', archived.title, {
-    videoId: archived.id,
-  });
+  }));
 
   return {
     success: true,
@@ -343,15 +359,13 @@ export async function publishVideoTool(
     return { success: false, message: 'No draft video found to publish.' };
   }
 
-  const published = await db.video.update({
+  const published = await auditedWrite(context, 'TC_AI_VIDEO_PUBLISHED', video.title, {
+    videoId: video.id,
+  }, (transaction) => transaction.video.update({
     where: { id: video.id },
     data: { status: 'Published' },
     include: { role: true },
-  });
-
-  await createAuditLog(context, 'TC_AI_VIDEO_PUBLISHED', published.title, {
-    videoId: published.id,
-  });
+  }));
 
   return {
     success: true,
@@ -368,6 +382,10 @@ export async function getVideoTool(
   const video = await findVideoByIdOrTitle(params.videoId || params.videoTitle || '');
   if (!video) {
     return { success: false, message: `Video not found for '${params.videoId || params.videoTitle}'.` };
+  }
+  if (context.currentUser.role !== 'ADMIN' &&
+      (video.status !== 'Published' || (video.roleId && video.roleId !== context.currentUser.profile?.roleId))) {
+    return { success: false, message: 'That video is not available in your assigned training catalog.' };
   }
 
   const [watchStats, totalWatches] = await Promise.all([
@@ -415,7 +433,10 @@ export async function listVideosTool(
 ): Promise<ToolResult> {
   const whereClause: any = {};
 
-  if (params.status && params.status !== 'ALL') {
+  if (context.currentUser.role !== 'ADMIN') {
+    whereClause.status = 'Published';
+    whereClause.AND = [{ OR: [{ roleId: context.currentUser.profile?.roleId || null }, { roleId: null }] }];
+  } else if (params.status && params.status !== 'ALL') {
     whereClause.status = params.status;
   } else if (!params.status) {
     // Default to published unless admin asks otherwise
@@ -423,10 +444,12 @@ export async function listVideosTool(
   }
 
   if (params.roleId || params.roleName) {
-    const role = await findRoleByIdOrName(params.roleId || params.roleName || '');
-    if (role) {
-      whereClause.roleId = role.id;
+    if (context.currentUser.role !== 'ADMIN') {
+      return { success: false, message: 'Members can only view training assigned to their own role.' };
     }
+    const role = await findRoleByIdOrName(params.roleId || params.roleName || '');
+    if (!role) return { success: false, message: `Role not found for '${params.roleId || params.roleName}'.` };
+    whereClause.roleId = role.id;
   }
 
   if (params.category && params.category !== 'ALL') whereClause.category = params.category;
@@ -497,23 +520,20 @@ export async function assignVideoToRoleTool(
 
   if (params.roleId || params.roleName) {
     const role = await findRoleByIdOrName(params.roleId || params.roleName || '');
-    if (role) {
-      roleId = role.id;
-      targetName = role.name;
-    }
+    if (!role) return { success: false, message: `Role not found for '${params.roleId || params.roleName}'.` };
+    roleId = role.id;
+    targetName = role.name;
   }
 
-  const updated = await db.video.update({
-    where: { id: video.id },
-    data: { roleId },
-    include: { role: true },
-  });
-
-  await createAuditLog(context, 'TC_AI_VIDEO_UPDATED', updated.title, {
+  const updated = await auditedWrite(context, 'TC_AI_VIDEO_UPDATED', video.title, {
     action: 'ASSIGN_ROLE',
     newRoleId: roleId,
     newRoleName: targetName,
-  });
+  }, (transaction) => transaction.video.update({
+    where: { id: video.id },
+    data: { roleId },
+    include: { role: true },
+  }));
 
   return {
     success: true,
@@ -547,9 +567,8 @@ export async function listMembersTool(
 
   if (params.roleId || params.roleName) {
     const role = await findRoleByIdOrName(params.roleId || params.roleName || '');
-    if (role) {
-      whereClause.profile = { roleId: role.id };
-    }
+    if (!role) return { success: false, message: `Role not found for '${params.roleId || params.roleName}'.` };
+    whereClause.profile = { roleId: role.id };
   }
 
   if (params.search) {
@@ -689,32 +708,22 @@ export async function approveMemberTool(
     return { success: true, message: `Member **${user.profile?.fullName || user.email}** is already approved.` };
   }
 
-  await db.user.update({
-    where: { id: user.id },
-    data: { status: 'APPROVED' },
-  });
-
-  if (user.profile) {
-    await db.memberProfile.update({
-      where: { id: user.profile.id },
-      data: { status: 'APPROVED' },
-    });
-  }
-
-  // Create real Notification
-  await db.notification.create({
-    data: {
-      userId: user.id,
-      title: 'Account Approved! 🎉',
-      message:
-        'Your Techveons digital identity account has been approved by the admin. You now have full access to your personalized role dashboard and training videos!',
-    },
-  });
-
   const targetName = `${user.profile?.memberId || user.email} (${user.profile?.fullName || 'Member'})`;
-  await createAuditLog(context, 'TC_AI_MEMBER_APPROVED', targetName, {
+  await auditedWrite(context, 'TC_AI_MEMBER_APPROVED', targetName, {
     userId: user.id,
     previousStatus: user.status,
+  }, async (transaction) => {
+    await transaction.user.update({ where: { id: user.id }, data: { status: 'APPROVED' } });
+    if (user.profile) {
+      await transaction.memberProfile.update({ where: { id: user.profile.id }, data: { status: 'APPROVED' } });
+    }
+    await transaction.notification.create({
+      data: {
+        userId: user.id,
+        title: 'Account Approved! 🎉',
+        message: 'Your Techveons digital identity account has been approved by the admin. You now have full access to your personalized role dashboard and training videos!',
+      },
+    });
   });
 
   return {
@@ -736,22 +745,15 @@ export async function suspendMemberTool(
     return { success: false, message: `Member not found for '${params.identifier}'.` };
   }
 
-  await db.user.update({
-    where: { id: user.id },
-    data: { status: 'SUSPENDED' },
-  });
-
-  if (user.profile) {
-    await db.memberProfile.update({
-      where: { id: user.profile.id },
-      data: { status: 'SUSPENDED' },
-    });
-  }
-
   const targetName = `${user.profile?.memberId || user.email} (${user.profile?.fullName || 'Member'})`;
-  await createAuditLog(context, 'TC_AI_MEMBER_SUSPENDED', targetName, {
+  await auditedWrite(context, 'TC_AI_MEMBER_SUSPENDED', targetName, {
     userId: user.id,
     previousStatus: user.status,
+  }, async (transaction) => {
+    await transaction.user.update({ where: { id: user.id }, data: { status: 'SUSPENDED' } });
+    if (user.profile) {
+      await transaction.memberProfile.update({ where: { id: user.profile.id }, data: { status: 'SUSPENDED' } });
+    }
   });
 
   return {
@@ -773,22 +775,15 @@ export async function rejectMemberTool(
     return { success: false, message: `Member not found for '${params.identifier}'.` };
   }
 
-  await db.user.update({
-    where: { id: user.id },
-    data: { status: 'REJECTED' },
-  });
-
-  if (user.profile) {
-    await db.memberProfile.update({
-      where: { id: user.profile.id },
-      data: { status: 'REJECTED' },
-    });
-  }
-
   const targetName = `${user.profile?.memberId || user.email} (${user.profile?.fullName || 'Member'})`;
-  await createAuditLog(context, 'TC_AI_MEMBER_REJECTED', targetName, {
+  await auditedWrite(context, 'TC_AI_MEMBER_REJECTED', targetName, {
     userId: user.id,
     previousStatus: user.status,
+  }, async (transaction) => {
+    await transaction.user.update({ where: { id: user.id }, data: { status: 'REJECTED' } });
+    if (user.profile) {
+      await transaction.memberProfile.update({ where: { id: user.profile.id }, data: { status: 'REJECTED' } });
+    }
   });
 
   return {
@@ -815,20 +810,15 @@ export async function updateMemberRoleTool(
     return { success: false, message: `Role not found for '${params.roleId || params.roleName}'.` };
   }
 
-  const updatedProfile = await db.memberProfile.update({
-    where: { id: user.profile.id },
-    data: {
-      roleId: role.id,
-      position: role.name,
-    },
-  });
-
   const targetName = `${user.profile.memberId} (${user.profile.fullName})`;
-  await createAuditLog(context, 'TC_AI_MEMBER_ROLE_CHANGED', targetName, {
+  const updatedProfile = await auditedWrite(context, 'TC_AI_MEMBER_ROLE_CHANGED', targetName, {
     userId: user.id,
     newRoleId: role.id,
     newRoleName: role.name,
-  });
+  }, (transaction) => transaction.memberProfile.update({
+    where: { id: user.profile!.id },
+    data: { roleId: role.id, position: role.name },
+  }));
 
   return {
     success: true,
@@ -865,12 +855,11 @@ export async function updateMemberProfileTool(
     profileData.skills = typeof params.skills === 'string' ? params.skills : JSON.stringify(params.skills);
   }
 
-  const updated = await db.memberProfile.update({
-    where: { id: user.profile.id },
-    data: profileData,
-  });
-
-  await createAuditLog(context, 'TC_AI_MEMBER_UPDATED', `${updated.memberId} (${updated.fullName})`, profileData);
+  const updated = await auditedWrite(context, 'TC_AI_MEMBER_UPDATED', `${user.profile.memberId} (${user.profile.fullName})`, profileData,
+    (transaction) => transaction.memberProfile.update({
+      where: { id: user.profile!.id },
+      data: profileData,
+    }));
 
   return {
     success: true,
@@ -1069,20 +1058,13 @@ export async function sendNotificationTool(
     return { success: false, message: `Member not found for '${params.identifier}'.` };
   }
 
-  const notification = await db.notification.create({
-    data: {
-      userId: user.id,
-      title,
-      message,
-    },
-  });
-
   const targetName = `${user.profile?.memberId || user.email} (${user.profile?.fullName || 'Member'})`;
-  await createAuditLog(context, 'TC_AI_NOTIFICATION_SENT', targetName, {
-    notificationId: notification.id,
+  const notification = await auditedWrite(context, 'TC_AI_NOTIFICATION_SENT', targetName, {
     title,
     userId: user.id,
-  });
+  }, (transaction) => transaction.notification.create({
+    data: { userId: user.id, title, message },
+  }));
 
   return {
     success: true,
@@ -1107,6 +1089,7 @@ export async function notifyRoleMembersTool(
   const roleInput = params.roleId || params.roleName || '';
   if (roleInput && roleInput.toUpperCase() !== 'ALL') {
     targetRole = await findRoleByIdOrName(roleInput);
+    if (!targetRole) return { success: false, message: `Role not found for '${roleInput}'. No notifications were sent.` };
   }
 
   const memberWhere: any = { role: 'MEMBER', status: 'APPROVED' };
@@ -1124,20 +1107,14 @@ export async function notifyRoleMembersTool(
   }
 
   // Create notifications in batch
-  await db.notification.createMany({
-    data: members.map((m) => ({
-      userId: m.id,
-      title,
-      message,
-    })),
-  });
-
   const targetDescription = targetRole ? `Role: ${targetRole.name}` : 'All Approved Members';
-  await createAuditLog(context, 'TC_AI_NOTIFICATION_SENT', targetDescription, {
+  await auditedWrite(context, 'TC_AI_NOTIFICATION_SENT', targetDescription, {
     recipientCount: members.length,
     roleId: targetRole?.id || 'ALL',
     title,
-  });
+  }, (transaction) => transaction.notification.createMany({
+    data: members.map((m) => ({ userId: m.id, title, message })),
+  }));
 
   return {
     success: true,
@@ -1158,6 +1135,9 @@ export async function getSystemSettingsTool(
   requireAdmin(context, 'get_system_settings');
 
   if (params?.key) {
+    if (params.key.startsWith('tc_ai_confirmation:')) {
+      return { success: false, message: 'Confirmation ticket settings are internal and cannot be viewed.' };
+    }
     const setting = await db.systemSetting.findUnique({ where: { key: params.key } });
     return {
       success: true,
@@ -1168,7 +1148,8 @@ export async function getSystemSettingsTool(
     };
   }
 
-  const settingsList = await db.systemSetting.findMany({ orderBy: { key: 'asc' } });
+  const settingsList = (await db.systemSetting.findMany({ orderBy: { key: 'asc' } }))
+    .filter((setting) => !setting.key.startsWith('tc_ai_confirmation:'));
   const settingsObject: Record<string, string> = {};
   settingsList.forEach((s) => {
     // Mask sensitive keys like secrets/keys if any
@@ -1204,17 +1185,18 @@ export async function updateSystemSettingTool(
   if (!key || value === undefined) {
     return { success: false, message: 'Setting key and value are required.' };
   }
+  if (key.startsWith('tc_ai_confirmation:')) {
+    return { success: false, message: 'Confirmation ticket settings are internal and cannot be modified.' };
+  }
 
-  const updated = await db.systemSetting.upsert({
+  const updated = await auditedWrite(context, 'TC_AI_SETTING_UPDATED', `Setting: ${key}`, {
+    key,
+    value: String(value),
+  }, (transaction) => transaction.systemSetting.upsert({
     where: { key },
     update: { value: String(value) },
     create: { key, value: String(value) },
-  });
-
-  await createAuditLog(context, 'TC_AI_SETTING_UPDATED', `Setting: ${key}`, {
-    key,
-    value: String(value),
-  });
+  }));
 
   return {
     success: true,
@@ -1371,5 +1353,35 @@ export async function getPendingMembersTool(context: ToolContext): Promise<ToolR
       ? `⏳ **Pending Member Approvals (${formatted.length}):**\n\n${lines}\n\n*Say "Approve [Name]" to approve any member.*`
       : '✅ No pending member registrations awaiting approval.',
     card,
+  };
+}
+
+export async function getAuditLogsTool(
+  context: ToolContext,
+  params: { search?: string; limit?: number } = {}
+): Promise<ToolResult> {
+  requireAdmin(context, 'get_audit_logs');
+  const limit = Math.max(1, Math.min(50, params.limit || 20));
+  const search = params.search?.trim();
+  const logs = await db.auditLog.findMany({
+    where: search ? {
+      OR: [
+        { action: { contains: search, mode: 'insensitive' } },
+        { target: { contains: search, mode: 'insensitive' } },
+      ],
+    } : undefined,
+    include: { user: { select: { email: true } } },
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+  });
+  const lines = logs.map((log, index) =>
+    `${index + 1}. **${log.action}** — ${log.target}\n   ${log.timestamp.toISOString()} · ${log.user?.email || 'System'}${log.metadata ? `\n   ${log.metadata}` : ''}`
+  );
+  return {
+    success: true,
+    data: logs,
+    message: logs.length
+      ? `**Recent Audit Logs (${logs.length})**\n\n${lines.join('\n')}`
+      : 'No audit logs matched that request.',
   };
 }

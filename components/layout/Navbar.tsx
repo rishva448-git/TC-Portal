@@ -86,6 +86,10 @@ export default function Navbar({ user }: NavbarProps) {
               <LayoutDashboard className="w-4 h-4 text-brand-500 flex-shrink-0" />
               <span>My Dashboard</span>
             </Link>
+            <Link href="/tc-ai" className={navLinkClass('/tc-ai')}>
+              <Sparkles className="w-4 h-4 text-brand-500 flex-shrink-0" />
+              <span>TC AI</span>
+            </Link>
           </nav>
         )}
 

@@ -4,6 +4,7 @@ import { processAiMessage } from '@/lib/tc-ai/orchestrator';
 import type { ChatRequestPayload } from '@/lib/tc-ai/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -11,9 +12,16 @@ export async function POST(request: Request) {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized: Session missing or expired' }, { status: 401 });
     }
+    if (currentUser.status !== 'APPROVED') {
+      return NextResponse.json({ error: 'Approved account access required' }, { status: 403 });
+    }
+    if (currentUser.role !== 'ADMIN' && currentUser.role !== 'MEMBER') {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+    if (currentUser.role === 'MEMBER' && currentUser.status !== 'APPROVED') {
+      return NextResponse.json({ error: 'Approved member access required' }, { status: 403 });
+    }
 
-    // Role check: Only ADMIN or authenticated members (with read restrictions)
-    // Most portal administration tools require ADMIN
     const body: ChatRequestPayload = await request.json();
     const { message, history = [], confirmation } = body;
 
@@ -47,6 +55,12 @@ export async function GET() {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (currentUser.status !== 'APPROVED') {
+      return NextResponse.json({ error: 'Approved account access required' }, { status: 403 });
+    }
+    if (currentUser.role !== 'ADMIN' && currentUser.role !== 'MEMBER') {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     return NextResponse.json({

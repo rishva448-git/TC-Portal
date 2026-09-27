@@ -23,7 +23,15 @@ export type ToolName =
   | 'update_system_setting'
   | 'get_member_statistics'
   | 'get_video_statistics'
-  | 'get_pending_members';
+  | 'get_pending_members'
+  | 'bulk_add_videos'
+  | 'bulk_update_videos'
+  | 'bulk_archive_videos'
+  | 'bulk_publish_videos'
+  | 'bulk_assign_role'
+  | 'bulk_create_notifications'
+  | 'bulk_approve_members'
+  | 'get_audit_logs';
 
 export interface ToolContext {
   currentUser: UserWithProfile;
@@ -54,6 +62,7 @@ export interface ToolResult {
 
 export interface PendingConfirmation {
   id: string;
+  token: string;
   toolName: ToolName;
   params: any;
   summary: string;
@@ -85,8 +94,7 @@ export interface ChatRequestPayload {
   confirmation?: {
     id: string;
     confirmed: boolean;
-    toolName: ToolName;
-    params: any;
+    token: string;
   };
 }
 

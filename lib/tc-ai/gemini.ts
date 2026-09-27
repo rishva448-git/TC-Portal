@@ -30,6 +30,26 @@ export const GEMINI_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: 'edit_video',
+    description: 'Update an existing training video title, purpose, metadata, role, or status.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        videoTitle: { type: 'STRING' },
+        title: { type: 'STRING' },
+        purpose: { type: 'STRING' },
+        description: { type: 'STRING' },
+        roleName: { type: 'STRING' },
+        category: { type: 'STRING' },
+        difficulty: { type: 'STRING' },
+        priority: { type: 'STRING', enum: ['Normal', 'Important', 'Required'] },
+        status: { type: 'STRING', enum: ['Published', 'Draft', 'Archived'] },
+        duration: { type: 'STRING' },
+      },
+      required: ['videoTitle'],
+    },
+  },
+  {
     name: 'publish_video',
     description: 'Publish a draft video so members can start watching it.',
     parameters: {
@@ -50,6 +70,27 @@ export const GEMINI_TOOL_DECLARATIONS = [
         status: { type: 'STRING', enum: ['Published', 'Draft', 'Archived', 'ALL'] },
         search: { type: 'STRING', description: 'Search keywords' },
       },
+    },
+  },
+  {
+    name: 'get_video',
+    description: 'Get the details and watch statistics for one training video.',
+    parameters: {
+      type: 'OBJECT',
+      properties: { videoTitle: { type: 'STRING' } },
+      required: ['videoTitle'],
+    },
+  },
+  {
+    name: 'assign_video_to_role',
+    description: 'Assign an existing training video to a role or to all members.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        videoTitle: { type: 'STRING' },
+        roleName: { type: 'STRING' },
+      },
+      required: ['videoTitle', 'roleName'],
     },
   },
   {
@@ -110,6 +151,31 @@ export const GEMINI_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: 'get_member',
+    description: 'Get one member profile and training summary.',
+    parameters: {
+      type: 'OBJECT',
+      properties: { identifier: { type: 'STRING' } },
+      required: ['identifier'],
+    },
+  },
+  {
+    name: 'update_member_profile',
+    description: 'Update a member profile field such as name, phone, bio, position, or skills.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        identifier: { type: 'STRING' },
+        fullName: { type: 'STRING' },
+        phone: { type: 'STRING' },
+        bio: { type: 'STRING' },
+        position: { type: 'STRING' },
+        skills: { type: 'STRING' },
+      },
+      required: ['identifier'],
+    },
+  },
+  {
     name: 'get_pending_members',
     description: 'Get all members awaiting administrative registration approval.',
     parameters: { type: 'OBJECT', properties: {} },
@@ -150,6 +216,19 @@ export const GEMINI_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: 'send_notification',
+    description: 'Send a notification to one specific member.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        identifier: { type: 'STRING' },
+        title: { type: 'STRING' },
+        message: { type: 'STRING' },
+      },
+      required: ['identifier', 'title', 'message'],
+    },
+  },
+  {
     name: 'get_member_statistics',
     description: 'Get statistical summary of member counts, statuses, and role distribution.',
     parameters: { type: 'OBJECT', properties: {} },
@@ -164,7 +243,39 @@ export const GEMINI_TOOL_DECLARATIONS = [
     description: 'View current portal system settings.',
     parameters: { type: 'OBJECT', properties: {} },
   },
+  {
+    name: 'get_audit_logs',
+    description: 'Read recent portal AuditLogs, optionally filtered by action or target.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        search: { type: 'STRING', description: 'Optional action or target search text' },
+        limit: { type: 'NUMBER', description: 'Maximum number of records, at most 50' },
+      },
+    },
+  },
+  {
+    name: 'update_system_setting',
+    description: 'Update a portal system setting (requires administrator confirmation).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        key: { type: 'STRING' },
+        value: { type: 'STRING' },
+      },
+      required: ['key', 'value'],
+    },
+  },
 ];
+
+const REGISTERED_TOOL_NAMES = new Set<ToolName>([
+  'add_video', 'edit_video', 'archive_video', 'publish_video', 'get_video', 'list_videos',
+  'assign_video_to_role', 'list_members', 'get_member', 'approve_member', 'suspend_member',
+  'reject_member', 'update_member_role', 'update_member_profile', 'get_member_watch_history',
+  'get_training_completion', 'send_notification', 'notify_role_members', 'get_system_settings',
+  'update_system_setting', 'get_member_statistics', 'get_video_statistics', 'get_pending_members',
+  'get_audit_logs',
+]);
 
 async function getGeminiApiKey(): Promise<string | null> {
   if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
@@ -217,7 +328,7 @@ export async function callGeminiIfAvailable(
     const candidate = data.candidates?.[0];
     const functionCall = candidate?.content?.parts?.find((p: any) => p.functionCall)?.functionCall;
 
-    if (functionCall && functionCall.name) {
+    if (functionCall && REGISTERED_TOOL_NAMES.has(functionCall.name as ToolName)) {
       return {
         toolName: functionCall.name as ToolName,
         params: functionCall.args || {},

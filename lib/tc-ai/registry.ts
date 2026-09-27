@@ -23,7 +23,17 @@ import {
   getMemberStatisticsTool,
   getVideoStatisticsTool,
   getPendingMembersTool,
+  getAuditLogsTool,
 } from './tools';
+import {
+  bulkAddVideosTool,
+  bulkUpdateVideosTool,
+  bulkArchiveVideosTool,
+  bulkPublishVideosTool,
+  bulkAssignRoleTool,
+  bulkCreateNotificationsTool,
+  bulkApproveMembersTool,
+} from './bulk-tools';
 
 export async function executeTool(
   context: ToolContext,
@@ -78,6 +88,22 @@ export async function executeTool(
         return await getVideoStatisticsTool(context);
       case 'get_pending_members':
         return await getPendingMembersTool(context);
+      case 'bulk_add_videos':
+        return await bulkAddVideosTool(context, params);
+      case 'bulk_update_videos':
+        return await bulkUpdateVideosTool(context, params);
+      case 'bulk_archive_videos':
+        return await bulkArchiveVideosTool(context, params);
+      case 'bulk_publish_videos':
+        return await bulkPublishVideosTool(context, params);
+      case 'bulk_assign_role':
+        return await bulkAssignRoleTool(context, params);
+      case 'bulk_create_notifications':
+        return await bulkCreateNotificationsTool(context, params);
+      case 'bulk_approve_members':
+        return await bulkApproveMembersTool(context, params);
+      case 'get_audit_logs':
+        return await getAuditLogsTool(context, params);
       default:
         return {
           success: false,

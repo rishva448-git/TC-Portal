@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, Film, History, LayoutDashboard, User } from 'lucide-react';
+import { Sparkles, Film, History, LayoutDashboard } from 'lucide-react';
 
 export default function MobileNav() {
   const pathname = usePathname();
@@ -49,6 +49,17 @@ export default function MobileNav() {
           <span className="text-[10px] font-medium">History</span>
         </Link>
 
+        <Link
+          href="/tc-ai"
+          className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all ${
+            isNavActive('/tc-ai')
+              ? 'text-brand-500 bg-brand-500/10 border border-brand-500/20'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <Sparkles className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] font-medium">TC AI</span>
+        </Link>
         <Link
           href="/dashboard"
           className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all ${

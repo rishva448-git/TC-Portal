@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Sparkles,
   Send,
@@ -31,40 +32,33 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: 'welcome',
     role: 'assistant',
-    content: `👋 Hello! I am **TC AI**, your production Portal Assistant.
+    content: `Hello! I am **TC AI**, the internal assistant for Techveons Creations.
 
-I am connected directly to the Techveons Portal backend with secure, authorized server-side tools. I can manage training videos, process member approvals, monitor watch completion, send role announcements, and report real-time analytics.
+  I can help with company knowledge, learning plans, verified YouTube research, and your authorized portal workflows. I won't invent company records or unverified video links.
 
 **Popular commands you can try:**
-• \`Add this video to Frontend Developer: https://youtube.com/watch?v=...\`
-• \`Show pending members\`
-• \`Approve Arun\`
-• \`Who hasn't completed the required training?\`
-• \`Show all Frontend Developers\`
-• \`How many members are approved?\`
-• \`Show video statistics\``,
+  • \`Create a 30-day Frontend Developer training plan\`
+  • \`Find 5 Tamil tutorials for Frontend Developer\`
+  • \`Show pending members\`
+  • \`Who hasn't completed required training?\`
+  • \`Prepare these videos for bulk upload\``,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   },
 ];
 
-const SUGGESTION_CHIPS = [
-  'Show pending members',
-  'Who hasn\'t completed the required training?',
-  'How many members are approved?',
-  'Show all Frontend Developers',
-  'Show video statistics',
-  'Show system settings',
-];
-
 export default function TcAiDashboardPage() {
+  const isAdmin = usePathname().startsWith('/admin/');
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [detectedYtId, setDetectedYtId] = useState<string | null>(null);
-  const [resolvedConfirmations, setResolvedConfirmations] = useState<Record<string, 'confirmed' | 'cancelled'>>({});
+  const [resolvedConfirmations, setResolvedConfirmations] = useState<Record<string, 'confirmed' | 'cancelled' | 'failed'>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const suggestionChips = isAdmin
+    ? ['Show pending members', 'Show training content gaps', 'Create a weekly training plan for Frontend Developer', 'Show incomplete mandatory training', 'Find 5 Tamil videos for each company role']
+    : ['Show my required videos', 'Show my progress', 'What training should I complete?', 'Create a weekly training plan', 'What skills should I learn?'];
 
   // Auto scroll to bottom of chat
   useEffect(() => {
@@ -104,6 +98,7 @@ export default function TcAiDashboardPage() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'TC AI request failed.');
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -122,7 +117,7 @@ export default function TcAiDashboardPage() {
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: '❌ Failed to reach the TC AI service. Please verify your connection and try again.',
+          content: error instanceof Error ? `❌ ${error.message}` : '❌ Failed to reach the TC AI service. Please try again.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -137,11 +132,6 @@ export default function TcAiDashboardPage() {
     confirmed: boolean
   ) => {
     if (isLoading) return;
-
-    setResolvedConfirmations((prev) => ({
-      ...prev,
-      [pending.id]: confirmed ? 'confirmed' : 'cancelled',
-    }));
 
     const userActionMessage: ChatMessage = {
       id: `user-confirm-${Date.now()}`,
@@ -163,14 +153,18 @@ export default function TcAiDashboardPage() {
           confirmation: {
             id: pending.id,
             confirmed,
-            toolName: pending.toolName,
-            params: pending.params,
+            token: pending.token,
           },
           history: newHistory,
         }),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Confirmation request failed.');
+      setResolvedConfirmations((prev) => ({
+        ...prev,
+        [pending.id]: data.success ? (confirmed ? 'confirmed' : 'cancelled') : 'failed',
+      }));
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -189,7 +183,7 @@ export default function TcAiDashboardPage() {
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: '❌ Error processing confirmation.',
+          content: error instanceof Error ? `❌ ${error.message}` : '❌ Error processing confirmation.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -260,7 +254,7 @@ export default function TcAiDashboardPage() {
               </span>
             </div>
             <p className="text-xs text-gray-400">
-              Authorized Portal Assistant • 23 Server-Side Tools Active
+              Founder, research, training, and portal operations
             </p>
           </div>
         </div>
@@ -296,7 +290,7 @@ export default function TcAiDashboardPage() {
                 </div>
               ) : (
                 <div className="w-8 h-8 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-300 font-bold text-xs flex-shrink-0">
-                  ADM
+                  {isAdmin ? 'ADM' : 'YOU'}
                 </div>
               )}
 
@@ -419,6 +413,18 @@ export default function TcAiDashboardPage() {
                             </span>
                           </div>
                         )}
+                        {msg.pendingConfirmation.previewData.affectedCount !== undefined && (
+                          <div>
+                            <span className="text-gray-400">Records in action:</span>{' '}
+                            <span className="font-bold text-amber-300">{msg.pendingConfirmation.previewData.affectedCount}</span>
+                          </div>
+                        )}
+                        {msg.pendingConfirmation.previewData.roles?.map((role: { name: string; count: number }) => (
+                          <div key={role.name} className="flex justify-between gap-3">
+                            <span>{role.name}</span>
+                            <span className="font-mono text-amber-300">{role.count}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -456,6 +462,10 @@ export default function TcAiDashboardPage() {
                           <span className="text-emerald-400 font-semibold flex items-center gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Action Confirmed & Completed
                           </span>
+                        ) : resolution === 'failed' ? (
+                          <span className="text-rose-400 font-semibold flex items-center gap-1">
+                            <XCircle className="w-3.5 h-3.5" /> Action Failed
+                          </span>
                         ) : (
                           <span className="text-gray-500 flex items-center gap-1">
                             <XCircle className="w-3.5 h-3.5" /> Action Cancelled
@@ -492,7 +502,7 @@ export default function TcAiDashboardPage() {
       {/* SUGGESTION PILLS */}
       <div className="flex-shrink-0 flex items-center overflow-x-auto py-1 gap-1.5 scrollbar-none">
         <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap pl-1">Quick:</span>
-        {SUGGESTION_CHIPS.map((chip, idx) => (
+        {suggestionChips.map((chip, idx) => (
           <button
             key={idx}
             onClick={() => handleSend(chip)}

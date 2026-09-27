@@ -1,6 +1,7 @@
 import { extractYouTubeId } from '@/lib/youtube';
 import type { ToolName } from './types';
 import { db } from '@/lib/db';
+import type { ChatMessage } from './types';
 
 export interface ParsedIntent {
   toolName: ToolName;
@@ -59,9 +60,68 @@ export function isNegativeResponse(text: string): boolean {
  * Deterministic Natural Language Understanding Engine
  * Parses natural language commands into one of the 23 TC AI tools with high accuracy.
  */
-export async function parseNaturalLanguageCommand(query: string): Promise<ParsedIntent | null> {
+export async function parseNaturalLanguageCommand(query: string, history: ChatMessage[] = []): Promise<ParsedIntent | null> {
   const text = query.trim();
   const lower = text.toLowerCase();
+
+  if (/approve\s+(?:all|every)\s+pending\s+members?/i.test(text) || /pending members ellarayum approve/i.test(text)) {
+    return { toolName: 'bulk_approve_members', params: {}, confidence: 0.99 };
+  }
+
+  const bulkJsonMatch = text.match(/[\[{][\s\S]*[\]}]/);
+  if (bulkJsonMatch && /bulk|multiple|these videos|these members|notifications/i.test(lower)) {
+    try {
+      const parsedJson = JSON.parse(bulkJsonMatch[0]);
+      const data = Array.isArray(parsedJson) ? { videos: parsedJson } : parsedJson;
+      if (/archive/i.test(lower) && Array.isArray(data.identifiers)) return { toolName: 'bulk_archive_videos', params: data, confidence: 0.99 };
+      if (/publish/i.test(lower) && Array.isArray(data.identifiers)) return { toolName: 'bulk_publish_videos', params: data, confidence: 0.99 };
+      if (/assign/i.test(lower) && Array.isArray(data.items)) return { toolName: 'bulk_assign_role', params: data, confidence: 0.99 };
+      if (/notification|notify/i.test(lower) && Array.isArray(data.items)) return { toolName: 'bulk_create_notifications', params: data, confidence: 0.99 };
+      if (/update|mark/i.test(lower) && Array.isArray(data.items)) return { toolName: 'bulk_update_videos', params: data, confidence: 0.99 };
+      if (/add|upload|create/i.test(lower) && Array.isArray(data.videos)) return { toolName: 'bulk_add_videos', params: data, confidence: 0.99 };
+    } catch {
+      return null;
+    }
+  }
+
+  if (/(?:mark|set|make)\s+(?:the\s+)?frontend\s+and\s+backend.*required|frontend\s+backend\s+required\s+ah\s+mark/i.test(lower)) {
+    const roles = await db.role.findMany({ select: { id: true, name: true } });
+    const roleIds = roles.filter((role) => /frontend|backend/i.test(role.name)).map((role) => role.id);
+    const videos = await db.video.findMany({ where: { roleId: { in: roleIds } }, select: { id: true } });
+    return {
+      toolName: 'bulk_update_videos',
+      params: { items: videos.map((video) => ({ identifier: video.id, updates: { priority: 'Required' } })) },
+      confidence: 0.98,
+    };
+  }
+
+  if (/audit\s*logs?|audit trail/i.test(lower)) {
+    const search = /bulk/i.test(lower) ? 'TC_AI_BULK' : undefined;
+    return { toolName: 'get_audit_logs', params: { search, limit: 20 }, confidence: 0.95 };
+  }
+
+  if (/bulk|these videos|approved videos|bulk upload/i.test(lower) && /add|upload|prepare|create/i.test(lower)) {
+    const sourceMessages = [text, ...history.filter((item) => item.role === 'assistant').map((item) => item.content)].reverse();
+    const videos: Array<Record<string, string>> = [];
+    for (const source of sourceMessages) {
+      const pattern = /^VIDEO\s+\d+\s*\r?\n\s*Title:\s*\r?\n([^\r\n]+)\r?\n\s*YouTube URL:\s*\r?\n(https?:\/\/[^\s]+)\r?\n\s*Role:\s*\r?\n([^\r\n]+)\r?\n\s*Purpose:\s*\r?\n([^\r\n]+)\r?\n\s*Category:\s*\r?\n([^\r\n]+)\r?\n\s*Difficulty:\s*\r?\n([^\r\n]+)\r?\n\s*Priority:\s*\r?\n([^\r\n]+)\r?\n\s*Description:\s*\r?\n([\s\S]*?)\r?\n\s*Thumbnail:\s*\r?\n[^\r\n]+/gim;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(source))) {
+        videos.push({
+          title: match[1].trim(),
+          youtubeUrl: match[2].trim(),
+          roleName: match[3].trim(),
+          purpose: match[4].trim(),
+          category: match[5].trim(),
+          difficulty: match[6].trim(),
+          priority: match[7].trim(),
+          description: match[8].trim(),
+        });
+      }
+      if (videos.length > 0) break;
+    }
+    if (videos.length > 0) return { toolName: 'bulk_add_videos', params: { videos }, confidence: 0.95 };
+  }
 
   // 1. YouTube URL detection (for adding/updating videos)
   const ytRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?[^ \n]*v=|embed\/|v\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}[^ \n]*)/i;
@@ -69,7 +129,7 @@ export async function parseNaturalLanguageCommand(query: string): Promise<Parsed
 
   if (ytMatch) {
     const youtubeUrl = ytMatch[0];
-    const isRequired = lower.includes('required') || lower.includes('mandatory');
+    const isRequired = lower.includes('required') || lower.includes('mandatory') || (lower.includes('frontend') && lower.includes('backend'));
     const isImportant = lower.includes('important');
     const priority = isRequired ? 'Required' : isImportant ? 'Important' : 'Normal';
 
@@ -90,6 +150,7 @@ export async function parseNaturalLanguageCommand(query: string): Promise<Parsed
     if (purposeMatch) {
       purpose = purposeMatch[1].trim();
     }
+    const titleMatch = text.match(/\btitle\s*[:=]\s*(?:"([^"]+)"|'([^']+)')/i);
 
     return {
       toolName: 'add_video',
@@ -97,12 +158,27 @@ export async function parseNaturalLanguageCommand(query: string): Promise<Parsed
         youtubeUrl,
         roleId: detectedRole?.id || null,
         roleName: detectedRole?.name || 'All Members',
+        title: titleMatch?.[1] || titleMatch?.[2],
         priority,
         purpose,
       },
       confidence: 0.95,
       reason: 'Detected YouTube URL with training command',
     };
+  }
+
+  const assignVideoMatch = text.match(/(?:assign|add)\s+(?:the\s+)?video\s+(.+?)\s+to\s+(.+?)(?:\s+training)?$/i);
+  if (assignVideoMatch && !ytMatch) {
+    return {
+      toolName: 'assign_video_to_role',
+      params: { videoTitle: assignVideoMatch[1].trim(), roleName: assignVideoMatch[2].trim() },
+      confidence: 0.9,
+    };
+  }
+
+  const getVideoMatch = text.match(/(?:show|get|view|find)\s+(?:the\s+)?video\s+(.+)$/i);
+  if (getVideoMatch) {
+    return { toolName: 'get_video', params: { videoTitle: getVideoMatch[1].trim() }, confidence: 0.9 };
   }
 
   // 2. Member Approval: "Approve Arun", "Approve TV-001", "Approve member Ravi"
@@ -145,6 +221,17 @@ export async function parseNaturalLanguageCommand(query: string): Promise<Parsed
         roleName: roleChangeMatch[2].trim(),
       },
       confidence: 0.95,
+    };
+  }
+
+  const profileUpdateMatch = text.match(/(?:change|update|set)\s+(.+?)(?:'s)?\s+(phone|bio|position|name)\s+to\s+(.+)$/i);
+  if (profileUpdateMatch) {
+    const field = profileUpdateMatch[2].toLowerCase();
+    const fieldName = field === 'name' ? 'fullName' : field;
+    return {
+      toolName: 'update_member_profile',
+      params: { identifier: profileUpdateMatch[1].trim(), [fieldName]: profileUpdateMatch[3].trim() },
+      confidence: 0.9,
     };
   }
 
@@ -254,18 +341,29 @@ export async function parseNaturalLanguageCommand(query: string): Promise<Parsed
       };
     }
 
-    const singleNotifyMatch = text.match(/(?:send\s+(?:a\s+)?notification|notify)\s+(?:to\s+)?([a-zA-Z0-9_-]+)(?::|\s+saying\s+|\s+with\s+message\s+)(.+)/i);
+    const singleNotifyMatch = text.match(/(?:send\s+(?:a\s+)?notification|notify)\s+(?:to\s+)?(.+?)(?::|\s+saying\s+|\s+with\s+message\s+)(.+)/i);
     if (singleNotifyMatch) {
+      const identifier = singleNotifyMatch[1].replace(/^member\s+/i, '').trim();
       return {
         toolName: 'send_notification',
         params: {
-          identifier: singleNotifyMatch[1].trim(),
+          identifier,
           title: 'Portal Notification',
           message: singleNotifyMatch[2].trim(),
         },
         confidence: 0.95,
       };
     }
+  }
+
+  const editVideoMatch = text.match(/(?:edit|update|change)\s+(?:the\s+)?video\s+(.+?)\s+(title|purpose|priority|category|difficulty|status)\s+to\s+(.+)$/i);
+  if (editVideoMatch) {
+    const field = editVideoMatch[2].toLowerCase();
+    return {
+      toolName: 'edit_video',
+      params: { videoTitle: editVideoMatch[1].trim(), [field]: editVideoMatch[3].trim() },
+      confidence: 0.9,
+    };
   }
 
   // 12. Role Members List: "Show all Frontend Developers", "Show Frontend Developers", "List Backend Developers"
