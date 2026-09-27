@@ -67,17 +67,28 @@ export async function GET() {
     }));
 
     const videoIds = topVideoCounts.map((item) => item.videoId);
-    const topVideos = videoIds.length
-      ? await db.video.findMany({
-          where: { id: { in: videoIds } },
-          select: {
-            id: true,
-            title: true,
-            thumbnailUrl: true,
-            role: { select: { name: true } },
+    const [recentActivity, topVideos] = await Promise.all([
+      db.auditLog.findMany({
+        take: 50,
+        orderBy: { timestamp: 'desc' },
+        include: {
+          user: {
+            include: { profile: true },
           },
-        })
-      : [];
+        },
+      }),
+      videoIds.length
+        ? db.video.findMany({
+            where: { id: { in: videoIds } },
+            select: {
+              id: true,
+              title: true,
+              thumbnailUrl: true,
+              role: { select: { name: true } },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
 
     const topVideosWithCount = topVideos.map((video) => ({
       id: video.id,
@@ -101,6 +112,7 @@ export async function GET() {
       },
       membersByRole,
       topVideos: topVideosWithCount,
+      recentActivity,
     });
 
     response.headers.set('Cache-Control', 'private, max-age=60, s-maxage=60');

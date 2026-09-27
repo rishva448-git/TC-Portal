@@ -13,10 +13,12 @@ import {
   Settings,
   FileText,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react';
 
 const links = [
   { href: '/admin', label: 'Dashboard', short: 'Home', icon: LayoutDashboard },
+  { href: '/admin/tc-ai', label: 'TC AI Assistant', short: 'TC AI', icon: Sparkles, isAi: true },
   { href: '/admin/members', label: 'Members', short: 'Members', icon: Users },
   { href: '/admin/videos', label: 'Videos', short: 'Videos', icon: Video },
   { href: '/admin/videos/add', label: '+ Add Video', short: 'Add', icon: PlusCircle, highlight: true },
@@ -57,13 +59,20 @@ export default function AdminSidebar() {
                   className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     active
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-lg shadow-amber-500/10'
+                      : (link as any).isAi
+                      ? 'bg-gradient-to-r from-violet-500/15 to-indigo-500/15 text-violet-200 border border-violet-500/30 hover:border-violet-500/50 hover:bg-violet-500/20'
                       : link.highlight
                       ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30 hover:bg-brand-500/30'
                       : 'text-gray-300 hover:text-white hover:bg-gray-800/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : link.highlight ? 'text-brand-500' : 'text-gray-400'}`} />
-                  <span>{link.label}</span>
+                  <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : (link as any).isAi ? 'text-violet-400' : link.highlight ? 'text-brand-500' : 'text-gray-400'}`} />
+                  <span className="flex-1">{link.label}</span>
+                  {(link as any).isAi && (
+                    <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/40">
+                      LIVE
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -94,12 +103,14 @@ export default function AdminSidebar() {
                 className={`flex flex-col items-center justify-center min-w-[4.25rem] px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
                   active
                     ? 'text-amber-300 bg-amber-500/15'
+                    : (link as any).isAi
+                    ? 'text-violet-300 bg-violet-500/15'
                     : link.highlight
                     ? 'text-brand-300'
                     : 'text-gray-400'
                 }`}
               >
-                <Icon className={`w-4 h-4 mb-0.5 ${active ? 'text-amber-400' : link.highlight ? 'text-brand-500' : ''}`} />
+                <Icon className={`w-4 h-4 mb-0.5 ${active ? 'text-amber-400' : (link as any).isAi ? 'text-violet-400' : link.highlight ? 'text-brand-500' : ''}`} />
                 <span className="whitespace-nowrap">{link.short}</span>
               </Link>
             );

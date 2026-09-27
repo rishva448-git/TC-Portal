@@ -13,7 +13,8 @@ import {
   ArrowRight,
   TrendingUp,
   Sliders,
-  FileText
+  FileText,
+  Sparkles,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -111,7 +112,15 @@ export default function AdminDashboardPage() {
           ⚡ Administrative Quick Actions
         </h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+          <Link
+            href="/admin/tc-ai"
+            className="p-4 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex flex-col items-center justify-center space-y-2 shadow-lg shadow-indigo-500/25 transition-all text-center group border border-indigo-400/30"
+          >
+            <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform text-white animate-pulse" />
+            <span>Launch TC AI ⚡</span>
+          </Link>
+
           <Link
             href="/admin/videos/add"
             className="p-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex flex-col items-center justify-center space-y-2 shadow-lg shadow-blue-500/25 transition-all text-center group"
