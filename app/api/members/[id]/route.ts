@@ -80,7 +80,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const { id } = params;
     const body = await request.json();
-    const { fullName, phone, bio, skills, profilePhoto, position, roleId, status } = body;
+    const { fullName, phone, bio, skills, profilePhoto, position, roleId, status, memberId } = body;
 
     // Non-admin can only update their own editable fields (photo, name, phone, bio, skills)
     const isAdmin = currentUser.role === 'ADMIN';
@@ -104,10 +104,27 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (skills !== undefined) profileData.skills = typeof skills === 'string' ? skills : JSON.stringify(skills);
     if (profilePhoto !== undefined) profileData.profilePhoto = profilePhoto;
 
-    // Restricted fields (only Admin can update position, roleId, status)
+    // Restricted fields (only Admin can update position, roleId, status, memberId)
     if (isAdmin) {
       if (position !== undefined) profileData.position = position;
       if (roleId !== undefined) profileData.roleId = roleId;
+      if (memberId !== undefined) {
+        const trimmedMemberId = String(memberId).trim();
+        if (!trimmedMemberId) {
+          return NextResponse.json({ error: 'Member ID cannot be empty' }, { status: 400 });
+        }
+
+        const duplicate = await db.memberProfile.findUnique({
+          where: { memberId: trimmedMemberId },
+          select: { id: true },
+        });
+
+        if (duplicate && duplicate.id !== userToUpdate.profile.id) {
+          return NextResponse.json({ error: 'This member ID is already in use' }, { status: 409 });
+        }
+
+        profileData.memberId = trimmedMemberId;
+      }
       if (status !== undefined) {
         profileData.status = status;
         await db.user.update({

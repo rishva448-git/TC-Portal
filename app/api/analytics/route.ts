@@ -9,31 +9,56 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const [memberCounts, videoCounts, watchCounts, roles, membersByRoleData, videosByRoleData, topVideoCounts] = await Promise.all([
+    const [stats, roles, recentActivity, topVideoCounts] = await Promise.all([
       db.user.groupBy({
         by: ['role', 'status'],
         _count: { id: true },
         where: { role: 'MEMBER' },
-      }),
-      db.video.groupBy({
-        by: ['status'],
-        _count: { id: true },
-      }),
-      db.watchHistory.groupBy({
-        by: ['completed'],
-        _count: { id: true },
+      }).then((memberCounts) => {
+        const totalMembers = memberCounts.reduce((sum, m) => sum + m._count.id, 0);
+        const activeMembers = memberCounts.find((m) => m.status === 'APPROVED')?._count.id || 0;
+        const pendingMembers = memberCounts.find((m) => m.status === 'PENDING')?._count.id || 0;
+        return { totalMembers, activeMembers, pendingMembers };
+      }).then(async (memberStats) => {
+        const [videoCounts, watchCounts] = await Promise.all([
+          db.video.groupBy({ by: ['status'], _count: { id: true } }),
+          db.watchHistory.groupBy({ by: ['completed'], _count: { id: true } }),
+        ]);
+
+        const totalVideos = videoCounts.reduce((sum, v) => sum + v._count.id, 0);
+        const publishedVideos = videoCounts.find((v) => v.status === 'Published')?._count.id || 0;
+        const totalWatches = watchCounts.reduce((sum, w) => sum + w._count.id, 0);
+        const completedTrainings = watchCounts.find((w) => w.completed === true)?._count.id || 0;
+
+        return {
+          ...memberStats,
+          totalVideos,
+          publishedVideos,
+          totalWatches,
+          completedTrainings,
+          avgCompletionRate: totalWatches > 0 ? Math.round((completedTrainings / totalWatches) * 100) : 0,
+        };
       }),
       db.role.findMany({
         select: { id: true, name: true },
         orderBy: { name: 'asc' },
       }),
-      db.memberProfile.groupBy({
-        by: ['roleId'],
-        _count: { id: true },
-      }),
-      db.video.groupBy({
-        by: ['roleId'],
-        _count: { id: true },
+      db.auditLog.findMany({
+        take: 10,
+        orderBy: { timestamp: 'desc' },
+        select: {
+          id: true,
+          action: true,
+          target: true,
+          timestamp: true,
+          user: {
+            select: {
+              profile: {
+                select: { fullName: true, memberId: true },
+              },
+            },
+          },
+        },
       }),
       db.watchHistory.groupBy({
         by: ['videoId'],
@@ -43,19 +68,10 @@ export async function GET() {
       }),
     ]);
 
-    const totalMembers = memberCounts.reduce((sum, m) => sum + m._count.id, 0);
-    const activeMembers = memberCounts.find((m) => m.status === 'APPROVED')?._count.id || 0;
-    const pendingMembers = memberCounts.find((m) => m.status === 'PENDING')?._count.id || 0;
-
-    const totalVideos = videoCounts.reduce((sum, v) => sum + v._count.id, 0);
-    const publishedVideos = videoCounts.find((v) => v.status === 'Published')?._count.id || 0;
-
-    const totalWatches = watchCounts.reduce((sum, w) => sum + w._count.id, 0);
-    const completedTrainings = watchCounts.find((w) => w.completed === true)?._count.id || 0;
-
-    const avgCompletionRate = totalWatches > 0
-      ? Math.round((completedTrainings / totalWatches) * 100)
-      : 0;
+    const [membersByRoleData, videosByRoleData] = await Promise.all([
+      db.memberProfile.groupBy({ by: ['roleId'], _count: { id: true } }),
+      db.video.groupBy({ by: ['roleId'], _count: { id: true } }),
+    ]);
 
     const membersByRoleMap = new Map(membersByRoleData.map((m) => [m.roleId, m._count.id]));
     const videosByRoleMap = new Map(videosByRoleData.map((v) => [v.roleId, v._count.id]));
@@ -67,28 +83,17 @@ export async function GET() {
     }));
 
     const videoIds = topVideoCounts.map((item) => item.videoId);
-    const [recentActivity, topVideos] = await Promise.all([
-      db.auditLog.findMany({
-        take: 50,
-        orderBy: { timestamp: 'desc' },
-        include: {
-          user: {
-            include: { profile: true },
+    const topVideos = videoIds.length
+      ? await db.video.findMany({
+          where: { id: { in: videoIds } },
+          select: {
+            id: true,
+            title: true,
+            thumbnailUrl: true,
+            role: { select: { name: true } },
           },
-        },
-      }),
-      videoIds.length
-        ? db.video.findMany({
-            where: { id: { in: videoIds } },
-            select: {
-              id: true,
-              title: true,
-              thumbnailUrl: true,
-              role: { select: { name: true } },
-            },
-          })
-        : Promise.resolve([]),
-    ]);
+        })
+      : [];
 
     const topVideosWithCount = topVideos.map((video) => ({
       id: video.id,
@@ -100,16 +105,7 @@ export async function GET() {
 
     const response = NextResponse.json({
       success: true,
-      stats: {
-        totalMembers,
-        activeMembers,
-        pendingMembers,
-        totalVideos,
-        publishedVideos,
-        totalWatches,
-        completedTrainings,
-        avgCompletionRate,
-      },
+      stats,
       membersByRole,
       topVideos: topVideosWithCount,
       recentActivity,

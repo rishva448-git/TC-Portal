@@ -14,7 +14,7 @@ export default async function TcAiPage() {
   return (
     <div className="min-h-screen bg-[#0B0F19] text-gray-100">
       <Navbar user={user} />
-      <main className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 pb-24 md:pb-8">
+      <main className="w-full max-w-[1700px] mx-auto px-3 sm:px-6 lg:px-8 pb-24 md:pb-8">
         <TcAiDashboardPage />
       </main>
       <MobileNav />

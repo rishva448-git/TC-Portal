@@ -40,7 +40,7 @@ export default function RootPage() {
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* Header */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between py-4">
+      <header className="max-w-[1700px] mx-auto w-full flex items-center justify-between py-4">
         <div className="flex items-center space-x-3">
           <img src="/logo.png" alt="Techveons Creations" className="w-12 h-12 object-contain" />
           <div>
@@ -130,7 +130,7 @@ export default function RootPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto w-full text-center py-4 border-t border-gray-800/60 text-xs text-gray-500 font-mono flex flex-col items-center gap-2">
+      <footer className="max-w-[1700px] mx-auto w-full text-center py-4 border-t border-gray-800/60 text-xs text-gray-500 font-mono flex flex-col items-center gap-2">
         <img src="/logo.png" alt="Techveons Creations" className="w-8 h-8 object-contain opacity-80" />
         <span>© 2026 Techveons Creations. All rights reserved. Internal Company Platform.</span>
       </footer>

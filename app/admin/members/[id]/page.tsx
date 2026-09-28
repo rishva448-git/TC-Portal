@@ -23,6 +23,7 @@ export default function AdminMemberDetailPage() {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<any[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [memberIdInput, setMemberIdInput] = useState('');
 
   useEffect(() => {
     async function loadData() {
@@ -37,6 +38,7 @@ export default function AdminMemberDetailPage() {
           if (data.member) {
             setMember(data.member);
             setSelectedRoleId(data.member.profile.roleId || '');
+            setMemberIdInput(data.member.profile.memberId || '');
           }
         }
       } catch (e) {
@@ -75,6 +77,38 @@ export default function AdminMemberDetailPage() {
       });
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleMemberIdUpdate = async () => {
+    if (!member) return;
+
+    const trimmed = memberIdInput.trim();
+    if (!trimmed) return;
+
+    try {
+      const res = await fetch(`/api/members/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: trimmed }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to update member ID');
+        return;
+      }
+
+      setMember({
+        ...member,
+        profile: {
+          ...member.profile,
+          memberId: trimmed,
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      alert('Failed to update member ID');
     }
   };
 
@@ -159,21 +193,44 @@ export default function AdminMemberDetailPage() {
             </div>
 
             {/* Change Role Dropdown */}
-            <div className="pt-2 border-t border-gray-800">
-              <label className="block text-[10px] font-mono text-gray-400 mb-1 uppercase font-bold">
-                Assigned Role:
-              </label>
-              <select
-                value={selectedRoleId}
-                onChange={handleRoleUpdate}
-                className="w-full px-3 py-1.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
-              >
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id} className="bg-gray-900 text-white">
-                    {r.name}
-                  </option>
-                ))}
-              </select>
+            <div className="pt-2 border-t border-gray-800 space-y-3">
+              <div>
+                <label className="block text-[10px] font-mono text-gray-400 mb-1 uppercase font-bold">
+                  Assigned Role:
+                </label>
+                <select
+                  value={selectedRoleId}
+                  onChange={handleRoleUpdate}
+                  className="w-full px-3 py-1.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
+                >
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id} className="bg-gray-900 text-white">
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-gray-400 mb-1 uppercase font-bold">
+                  Member ID:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={memberIdInput}
+                    onChange={(e) => setMemberIdInput(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-blue-500"
+                    placeholder="TV-001"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleMemberIdUpdate}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

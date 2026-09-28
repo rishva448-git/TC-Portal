@@ -238,7 +238,7 @@ export default function TcAiDashboardPage() {
   };
 
   return (
-    <div className="space-y-4 pb-8 max-w-5xl mx-auto flex flex-col h-[calc(100vh-6rem)]">
+    <div className="space-y-4 pb-8 max-w-[1500px] w-full mx-auto flex flex-col h-[calc(100vh-6rem)]">
       {/* HEADER BAR */}
       <div className="flex items-center justify-between border-b border-gray-800 pb-4 flex-shrink-0">
         <div className="flex items-center space-x-3">
@@ -295,7 +295,7 @@ export default function TcAiDashboardPage() {
               )}
 
               {/* Message Content Container */}
-              <div className={`max-w-[85%] sm:max-w-[78%] space-y-2.5 ${isUser ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[92%] sm:max-w-[82%] xl:max-w-[76%] space-y-2.5 ${isUser ? 'items-end' : 'items-start'}`}>
                 {/* TOOL CALL BADGES */}
                 {msg.toolCalls && msg.toolCalls.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">

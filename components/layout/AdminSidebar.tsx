@@ -35,7 +35,7 @@ export default function AdminSidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="w-64 glass-panel border-r border-gray-800/80 bg-gray-950/90 h-[calc(100vh-4rem)] sticky top-16 hidden md:flex flex-col justify-between p-4 flex-shrink-0">
+      <aside className="w-[16rem] xl:w-[17rem] glass-panel border-r border-gray-800/80 bg-gray-950/90 h-[calc(100vh-4rem)] sticky top-16 hidden md:flex flex-col justify-between p-4 flex-shrink-0">
         <div className="space-y-6">
           <div className="px-3 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-xl border border-amber-500/20">
             <div className="flex items-center space-x-2">

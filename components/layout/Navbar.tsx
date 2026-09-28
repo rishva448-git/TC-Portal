@@ -50,7 +50,7 @@ export default function Navbar({ user }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-gray-900/95 backdrop-blur-md border-b border-gray-800/80">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
+      <div className="max-w-[1700px] mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
         {/* Left: Brand */}
         <Link href="/home" className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 md:flex-none md:max-w-[280px]">
           <div className="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">

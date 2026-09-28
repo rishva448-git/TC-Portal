@@ -87,7 +87,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#0B0F19] text-gray-100 pb-24 md:pb-12">
       <Navbar user={user} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* PERSONALIZED WELCOME BANNER */}
         <section className="glass-card rounded-3xl p-6 sm:p-8 border border-blue-500/30 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
